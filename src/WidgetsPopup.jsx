@@ -1,13 +1,21 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import './archivePopup.css';
 import { CONTENT_UPDATED_EVENT, getMergedContent, loadMergedContent } from './data/contentStore';
+
+const WIDGET_PAGE_SIZE = 6;
 
 function WidgetsPopup({ onClose }) {
   const [content, setContent] = useState(() => getMergedContent());
   const { widgets } = content;
   const [selectedId, setSelectedId] = useState(widgets[0]?.id);
+  const [page, setPage] = useState(0);
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [fieldValues, setFieldValues] = useState({});
   const [copyStatus, setCopyStatus] = useState('COPY HTML');
+  const iframeRef = useRef(null);
+  const [previewHeight, setPreviewHeight] = useState(280);
+  const pageCount = Math.max(1, Math.ceil(widgets.length / WIDGET_PAGE_SIZE));
+  const visibleWidgets = widgets.slice(page * WIDGET_PAGE_SIZE, (page + 1) * WIDGET_PAGE_SIZE);
   const selectedWidget = widgets.find((widget) => widget.id === selectedId) || widgets[0];
   const currentFields = useMemo(() => selectedWidget?.fields || [], [selectedWidget?.fields]);
   const mergedFieldValues = useMemo(
@@ -15,6 +23,15 @@ function WidgetsPopup({ onClose }) {
     [currentFields, fieldValues],
   );
   const renderedHtml = renderTemplate(selectedWidget?.html || '', mergedFieldValues, currentFields);
+
+  const resizePreview = () => {
+    const iframe = iframeRef.current;
+    const body = iframe?.contentDocument?.body;
+    const html = iframe?.contentDocument?.documentElement;
+    if (!body || !html) return;
+
+    setPreviewHeight(Math.max(180, body.scrollHeight, html.scrollHeight));
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -62,9 +79,9 @@ function WidgetsPopup({ onClose }) {
         </header>
 
         <div className="archive-body">
-          <div className="widget-layout">
+          <div className={`widget-layout ${isDetailOpen ? 'is-detail-open' : ''}`}>
             <aside className="widget-list">
-              {widgets.map((widget) => (
+              {visibleWidgets.map((widget) => (
                 <button
                   key={widget.id}
                   type="button"
@@ -73,20 +90,40 @@ function WidgetsPopup({ onClose }) {
                     setSelectedId(widget.id);
                     setFieldValues({});
                     setCopyStatus('COPY HTML');
+                    setIsDetailOpen(true);
                   }}
                 >
                   <span className="widget-name">{widget.name}</span>
                   <span className="widget-desc">{widget.description}</span>
                 </button>
               ))}
+              <Pagination
+                page={page}
+                pageCount={pageCount}
+                onPageChange={(nextPage) => {
+                  const nextWidget = widgets[nextPage * WIDGET_PAGE_SIZE];
+                  setPage(nextPage);
+                  setSelectedId(nextWidget?.id);
+                  setFieldValues({});
+                  setCopyStatus('COPY HTML');
+                  setIsDetailOpen(false);
+                }}
+              />
             </aside>
 
             <main className="widget-workspace">
+              <button type="button" className="mobile-back-button" onClick={() => setIsDetailOpen(false)}>
+                BACK TO LIST
+              </button>
               <section className="preview-frame">
                 <iframe
+                  ref={iframeRef}
                   title={`${selectedWidget?.name || 'Widget'} preview`}
                   srcDoc={renderedHtml}
-                  sandbox=""
+                  sandbox="allow-same-origin"
+                  scrolling="no"
+                  onLoad={resizePreview}
+                  style={{ height: `${previewHeight}px` }}
                 />
               </section>
               {currentFields.length > 0 && (
@@ -121,6 +158,22 @@ function WidgetsPopup({ onClose }) {
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+function Pagination({ page, pageCount, onPageChange }) {
+  if (pageCount <= 1) return null;
+
+  return (
+    <div className="pagination-row">
+      <button type="button" disabled={page === 0} onClick={() => onPageChange(page - 1)}>
+        PREV
+      </button>
+      <span>{page + 1} / {pageCount}</span>
+      <button type="button" disabled={page === pageCount - 1} onClick={() => onPageChange(page + 1)}>
+        NEXT
+      </button>
     </div>
   );
 }

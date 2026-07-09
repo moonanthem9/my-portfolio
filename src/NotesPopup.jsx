@@ -2,10 +2,16 @@ import { useEffect, useState } from 'react';
 import './archivePopup.css';
 import { CONTENT_UPDATED_EVENT, getMergedContent, loadMergedContent } from './data/contentStore';
 
+const NOTE_PAGE_SIZE = 7;
+
 function NotesPopup({ onClose }) {
   const [content, setContent] = useState(() => getMergedContent());
   const { notes } = content;
   const [selectedId, setSelectedId] = useState(notes[0]?.id);
+  const [page, setPage] = useState(0);
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const pageCount = Math.max(1, Math.ceil(notes.length / NOTE_PAGE_SIZE));
+  const visibleNotes = notes.slice(page * NOTE_PAGE_SIZE, (page + 1) * NOTE_PAGE_SIZE);
   const selectedNote = notes.find((note) => note.id === selectedId) || notes[0];
 
   useEffect(() => {
@@ -41,23 +47,39 @@ function NotesPopup({ onClose }) {
         </header>
 
         <div className="archive-body">
-          <div className="note-layout">
+          <div className={`note-layout ${isDetailOpen ? 'is-detail-open' : ''}`}>
             <nav className="note-list" aria-label="note list">
-              {notes.map((note) => (
+              {visibleNotes.map((note) => (
                 <button
                   key={note.id}
                   type="button"
                   className={`note-list-button ${selectedId === note.id ? 'is-active' : ''}`}
-                  onClick={() => setSelectedId(note.id)}
+                  onClick={() => {
+                    setSelectedId(note.id);
+                    setIsDetailOpen(true);
+                  }}
                 >
                   <span className="note-date">{note.date}</span>
                   <span className="note-list-title">{note.title}</span>
                 </button>
               ))}
+              <Pagination
+                page={page}
+                pageCount={pageCount}
+                onPageChange={(nextPage) => {
+                  const nextNote = notes[nextPage * NOTE_PAGE_SIZE];
+                  setPage(nextPage);
+                  setSelectedId(nextNote?.id);
+                  setIsDetailOpen(false);
+                }}
+              />
             </nav>
 
             {selectedNote && (
               <section className="note-detail">
+                <button type="button" className="mobile-back-button" onClick={() => setIsDetailOpen(false)}>
+                  BACK TO LIST
+                </button>
                 <div className="note-date">{selectedNote.date}</div>
                 <h3 className="note-title">{selectedNote.title}</h3>
                 {selectedNote.image && (
@@ -76,6 +98,22 @@ function NotesPopup({ onClose }) {
           </div>
         </div>
       </article>
+    </div>
+  );
+}
+
+function Pagination({ page, pageCount, onPageChange }) {
+  if (pageCount <= 1) return null;
+
+  return (
+    <div className="pagination-row">
+      <button type="button" disabled={page === 0} onClick={() => onPageChange(page - 1)}>
+        PREV
+      </button>
+      <span>{page + 1} / {pageCount}</span>
+      <button type="button" disabled={page === pageCount - 1} onClick={() => onPageChange(page + 1)}>
+        NEXT
+      </button>
     </div>
   );
 }
