@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { CONTENT_UPDATED_EVENT, getMergedContent } from './data/contentStore';
+import { CONTENT_UPDATED_EVENT, getMergedContent, loadMergedContent } from './data/contentStore';
 
 function NotesPopup({ onClose }) {
   const [content, setContent] = useState(() => getMergedContent());
@@ -8,10 +8,22 @@ function NotesPopup({ onClose }) {
   const selectedNote = notes.find((note) => note.id === selectedId) || notes[0];
 
   useEffect(() => {
-    const handleContentUpdate = () => setContent(getMergedContent());
+    let isMounted = true;
+    const syncContent = async () => {
+      const nextContent = await loadMergedContent();
+      if (isMounted) setContent(nextContent);
+    };
+    const handleContentUpdate = () => {
+      syncContent();
+    };
+
+    syncContent();
     window.addEventListener(CONTENT_UPDATED_EVENT, handleContentUpdate);
 
-    return () => window.removeEventListener(CONTENT_UPDATED_EVENT, handleContentUpdate);
+    return () => {
+      isMounted = false;
+      window.removeEventListener(CONTENT_UPDATED_EVENT, handleContentUpdate);
+    };
   }, []);
 
   return (

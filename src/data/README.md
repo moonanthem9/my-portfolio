@@ -12,9 +12,17 @@ Later, this file can be replaced by data loaded from an admin page, GitHub-backe
 
 ## Admin Drafts
 
-`/admin` provides a first writing screen. It currently saves new entries to browser `localStorage` through `contentStore.js`, then merges those entries with `content.js`.
+`/admin` provides a writing screen. It sends save/delete requests to `/api/content`, which commits changes to `src/data/userContent.json` through the GitHub Contents API.
 
-This is useful for testing the authoring flow before adding a real backend. To make entries public across devices, replace the storage functions in `contentStore.js` with a GitHub API, Supabase, Vercel Blob, or CMS-backed save/load layer.
+For Vercel production, set these environment variables:
+
+- `ADMIN_PASSWORD`: password required by the admin screen.
+- `GITHUB_CONTENT_TOKEN`: GitHub fine-grained token with repository Contents read/write permission.
+- `GITHUB_OWNER`: optional, defaults to the connected Vercel repo owner.
+- `GITHUB_REPO`: optional, defaults to the connected Vercel repo name.
+- `GITHUB_BRANCH`: optional, defaults to `main`.
+
+Uploaded images are currently stored as data URLs inside `userContent.json`. This is simple and portable, but large images can make the JSON file heavy. A later version can move images to Vercel Blob, Cloudinary, or Supabase Storage.
 
 ## Chatbot Shape
 

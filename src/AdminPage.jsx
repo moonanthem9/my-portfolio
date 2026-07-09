@@ -1,5 +1,14 @@
-import { useState } from 'react';
-import { getStoredContent, makeContentId, saveContentItem } from './data/contentStore';
+import { useEffect, useState } from 'react';
+import {
+  clearAdminPassword,
+  deleteContentItem,
+  getAdminPassword,
+  getStoredContent,
+  loadStoredContent,
+  makeContentId,
+  saveContentItem,
+  setAdminPassword,
+} from './data/contentStore';
 
 const initialForms = {
   chatbots: {
@@ -30,9 +39,24 @@ function AdminPage() {
   const [section, setSection] = useState('notes');
   const [forms, setForms] = useState(initialForms);
   const [savedContent, setSavedContent] = useState(() => getStoredContent());
+  const [password, setPassword] = useState(() => getAdminPassword());
+  const [isUnlocked, setIsUnlocked] = useState(() => Boolean(getAdminPassword()));
+  const [isBusy, setIsBusy] = useState(false);
   const [status, setStatus] = useState('READY');
 
   const activeForm = forms[section];
+
+  useEffect(() => {
+    let isMounted = true;
+
+    loadStoredContent().then((content) => {
+      if (isMounted) setSavedContent(content);
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const updateField = (field, value) => {
     setForms((prev) => ({
@@ -53,7 +77,27 @@ function AdminPage() {
     reader.readAsDataURL(file);
   };
 
-  const handleSubmit = (event) => {
+  const handleUnlock = (event) => {
+    event.preventDefault();
+
+    if (!password.trim()) {
+      setStatus('PASSWORD_REQUIRED');
+      return;
+    }
+
+    setAdminPassword(password);
+    setIsUnlocked(true);
+    setStatus('UNLOCKED');
+  };
+
+  const handleLock = () => {
+    clearAdminPassword();
+    setPassword('');
+    setIsUnlocked(false);
+    setStatus('LOCKED');
+  };
+
+  const handleSubmit = async (event) => {
     event.preventDefault();
 
     const item = buildContentItem(section, activeForm);
@@ -62,10 +106,34 @@ function AdminPage() {
       return;
     }
 
-    const nextContent = saveContentItem(section, item);
-    setSavedContent(nextContent);
-    setForms((prev) => ({ ...prev, [section]: initialForms[section] }));
-    setStatus('SAVED_TO_LOCAL_ARCHIVE');
+    setIsBusy(true);
+    setStatus('SAVING');
+
+    try {
+      const nextContent = await saveContentItem(section, item, password);
+      setSavedContent(nextContent);
+      setForms((prev) => ({ ...prev, [section]: initialForms[section] }));
+      setStatus('SAVED_TO_GITHUB');
+    } catch (error) {
+      setStatus(error.message === 'Unauthorized.' ? 'UNAUTHORIZED' : 'SAVE_FAILED');
+    } finally {
+      setIsBusy(false);
+    }
+  };
+
+  const handleDelete = async (targetSection, id) => {
+    setIsBusy(true);
+    setStatus('DELETING');
+
+    try {
+      const nextContent = await deleteContentItem(targetSection, id, password);
+      setSavedContent(nextContent);
+      setStatus('DELETED_FROM_GITHUB');
+    } catch (error) {
+      setStatus(error.message === 'Unauthorized.' ? 'UNAUTHORIZED' : 'DELETE_FAILED');
+    } finally {
+      setIsBusy(false);
+    }
   };
 
   return (
@@ -76,83 +144,105 @@ function AdminPage() {
             <div style={eyebrowStyle}>ASTERISM ADMIN</div>
             <h1 style={titleStyle}>WRITE ARCHIVE ENTRY</h1>
           </div>
-          <a href="/" style={homeLinkStyle}>RETURN</a>
+          <div style={headerActionStyle}>
+            {isUnlocked && <button type="button" onClick={handleLock} style={lockButtonStyle}>LOCK</button>}
+            <a href="/" style={homeLinkStyle}>RETURN</a>
+          </div>
         </header>
 
-        <nav style={tabRowStyle} aria-label="content type">
-          {[
-            ['notes', 'NOTES'],
-            ['chatbots', 'CHATBOT'],
-            ['widgets', 'WIDGET'],
-          ].map(([id, label]) => (
-            <button
-              key={id}
-              type="button"
-              onClick={() => {
-                setSection(id);
-                setStatus('READY');
-              }}
-              style={{
-                ...tabStyle,
-                background: section === id ? '#0055ff' : '#050812',
-                color: section === id ? '#fff' : '#0055ff',
-              }}
-            >
-              {label}
-            </button>
-          ))}
-        </nav>
+        {!isUnlocked ? (
+          <form onSubmit={handleUnlock} style={formStyle}>
+            <Field
+              label="ADMIN PASSWORD"
+              type="password"
+              value={password}
+              onChange={setPassword}
+              placeholder="Vercel ADMIN_PASSWORD"
+            />
+            <div style={actionRowStyle}>
+              <button type="submit" style={saveButtonStyle}>UNLOCK ADMIN</button>
+              <div style={statusStyle}>STATUS: {status}</div>
+            </div>
+          </form>
+        ) : (
+          <>
+            <nav style={tabRowStyle} aria-label="content type">
+              {[
+                ['notes', 'NOTES'],
+                ['chatbots', 'CHATBOT'],
+                ['widgets', 'WIDGET'],
+              ].map(([id, label]) => (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => {
+                    setSection(id);
+                    setStatus('READY');
+                  }}
+                  style={{
+                    ...tabStyle,
+                    background: section === id ? '#0055ff' : '#050812',
+                    color: section === id ? '#fff' : '#0055ff',
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
+            </nav>
 
-        <form onSubmit={handleSubmit} style={formStyle}>
-          {section === 'notes' && (
-            <>
-              <Field label="TITLE" value={activeForm.title} onChange={(value) => updateField('title', value)} />
-              <TextArea label="BODY" value={activeForm.body} onChange={(value) => updateField('body', value)} minHeight="220px" />
-              <Field label="TAGS" value={activeForm.tags} onChange={(value) => updateField('tags', value)} placeholder="OPENING, REVIEW, DIARY" />
-              <ImageField image={activeForm.image} onUpload={handleImageUpload} onClear={() => updateField('image', '')} />
-            </>
-          )}
+            <form onSubmit={handleSubmit} style={formStyle}>
+              {section === 'notes' && (
+                <>
+                  <Field label="TITLE" value={activeForm.title} onChange={(value) => updateField('title', value)} />
+                  <TextArea label="BODY" value={activeForm.body} onChange={(value) => updateField('body', value)} minHeight="220px" />
+                  <Field label="TAGS" value={activeForm.tags} onChange={(value) => updateField('tags', value)} placeholder="OPENING, REVIEW, DIARY" />
+                  <ImageField image={activeForm.image} onUpload={handleImageUpload} onClear={() => updateField('image', '')} />
+                </>
+              )}
 
-          {section === 'chatbots' && (
-            <>
-              <Field label="NAME" value={activeForm.name} onChange={(value) => updateField('name', value)} />
-              <TextArea label="SUMMARY" value={activeForm.summary} onChange={(value) => updateField('summary', value)} />
-              <ImageField image={activeForm.image} onUpload={handleImageUpload} onClear={() => updateField('image', '')} />
-              <div style={subGridStyle}>
-                <Field label="PLATFORM 1 NAME" value={activeForm.platform1Label} onChange={(value) => updateField('platform1Label', value)} />
-                <Field label="PLATFORM 1 URL" value={activeForm.platform1Href} onChange={(value) => updateField('platform1Href', value)} />
-                <Field label="PLATFORM 2 NAME" value={activeForm.platform2Label} onChange={(value) => updateField('platform2Label', value)} />
-                <Field label="PLATFORM 2 URL" value={activeForm.platform2Href} onChange={(value) => updateField('platform2Href', value)} />
-                <Field label="PLATFORM 3 NAME" value={activeForm.platform3Label} onChange={(value) => updateField('platform3Label', value)} />
-                <Field label="PLATFORM 3 URL" value={activeForm.platform3Href} onChange={(value) => updateField('platform3Href', value)} />
+              {section === 'chatbots' && (
+                <>
+                  <Field label="NAME" value={activeForm.name} onChange={(value) => updateField('name', value)} />
+                  <TextArea label="SUMMARY" value={activeForm.summary} onChange={(value) => updateField('summary', value)} />
+                  <ImageField image={activeForm.image} onUpload={handleImageUpload} onClear={() => updateField('image', '')} />
+                  <div style={subGridStyle}>
+                    <Field label="PLATFORM 1 NAME" value={activeForm.platform1Label} onChange={(value) => updateField('platform1Label', value)} />
+                    <Field label="PLATFORM 1 URL" value={activeForm.platform1Href} onChange={(value) => updateField('platform1Href', value)} />
+                    <Field label="PLATFORM 2 NAME" value={activeForm.platform2Label} onChange={(value) => updateField('platform2Label', value)} />
+                    <Field label="PLATFORM 2 URL" value={activeForm.platform2Href} onChange={(value) => updateField('platform2Href', value)} />
+                    <Field label="PLATFORM 3 NAME" value={activeForm.platform3Label} onChange={(value) => updateField('platform3Label', value)} />
+                    <Field label="PLATFORM 3 URL" value={activeForm.platform3Href} onChange={(value) => updateField('platform3Href', value)} />
+                  </div>
+                </>
+              )}
+
+              {section === 'widgets' && (
+                <>
+                  <Field label="NAME" value={activeForm.name} onChange={(value) => updateField('name', value)} />
+                  <Field label="DESCRIPTION" value={activeForm.description} onChange={(value) => updateField('description', value)} />
+                  <TextArea label="HTML" value={activeForm.html} onChange={(value) => updateField('html', value)} minHeight="260px" />
+                </>
+              )}
+
+              <div style={actionRowStyle}>
+                <button type="submit" disabled={isBusy} style={saveButtonStyle}>SAVE ENTRY</button>
+                <div style={statusStyle}>STATUS: {status}</div>
               </div>
-            </>
-          )}
-
-          {section === 'widgets' && (
-            <>
-              <Field label="NAME" value={activeForm.name} onChange={(value) => updateField('name', value)} />
-              <Field label="DESCRIPTION" value={activeForm.description} onChange={(value) => updateField('description', value)} />
-              <TextArea label="HTML" value={activeForm.html} onChange={(value) => updateField('html', value)} minHeight="260px" />
-            </>
-          )}
-
-          <div style={actionRowStyle}>
-            <button type="submit" style={saveButtonStyle}>SAVE ENTRY</button>
-            <div style={statusStyle}>STATUS: {status}</div>
-          </div>
-        </form>
+            </form>
+          </>
+        )}
       </section>
 
       <aside style={previewPanelStyle}>
-        <div style={eyebrowStyle}>LOCAL DRAFTS</div>
-        <h2 style={sideTitleStyle}>SAVED IN THIS BROWSER</h2>
+        <div style={eyebrowStyle}>GITHUB CONTENT</div>
+        <h2 style={sideTitleStyle}>SAVED ENTRIES</h2>
         <ContentCount label="NOTES" count={savedContent.notes.length} />
         <ContentCount label="CHATBOTS" count={savedContent.chatbots.length} />
         <ContentCount label="WIDGETS" count={savedContent.widgets.length} />
-        <p style={hintStyle}>
-          지금 저장한 항목은 이 브라우저에 즉시 반영됩니다. 실제 서버 업로드는 다음 단계에서 이 저장 함수를 Supabase나 GitHub API로 교체하면 됩니다.
-        </p>
+        {isUnlocked && (
+          <SavedContentList content={savedContent} onDelete={handleDelete} isBusy={isBusy} />
+        )}
+        <p style={hintStyle}>저장과 삭제는 GitHub의 `src/data/userContent.json`에 커밋됩니다. Vercel 환경 변수 설정이 필요합니다.</p>
       </aside>
     </main>
   );
@@ -206,17 +296,48 @@ function buildContentItem(section, form) {
   return null;
 }
 
-function Field({ label, value, onChange, placeholder = '' }) {
+function Field({ label, value, onChange, placeholder = '', type = 'text' }) {
   return (
     <label style={labelStyle}>
       <span style={labelTextStyle}>{label}</span>
       <input
+        type={type}
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
         style={inputStyle}
       />
     </label>
+  );
+}
+
+function SavedContentList({ content, onDelete, isBusy }) {
+  return (
+    <div style={savedListStyle}>
+      {[
+        ['notes', 'NOTES'],
+        ['chatbots', 'CHATBOTS'],
+        ['widgets', 'WIDGETS'],
+      ].map(([section, label]) => (
+        <section key={section} style={savedSectionStyle}>
+          <div style={labelTextStyle}>{label}</div>
+          {content[section].length === 0 && <div style={emptyTextStyle}>EMPTY</div>}
+          {content[section].map((item) => (
+            <div key={item.id} style={savedItemStyle}>
+              <span>{item.title || item.name}</span>
+              <button
+                type="button"
+                disabled={isBusy}
+                onClick={() => onDelete(section, item.id)}
+                style={deleteButtonStyle}
+              >
+                DELETE
+              </button>
+            </div>
+          ))}
+        </section>
+      ))}
+    </div>
   );
 }
 
@@ -283,6 +404,12 @@ const headerStyle = {
   borderBottom: '1px solid rgba(0,85,255,0.55)',
 };
 
+const headerActionStyle = {
+  display: 'flex',
+  alignItems: 'flex-start',
+  gap: '10px',
+};
+
 const eyebrowStyle = {
   color: '#0055ff',
   fontSize: '12px',
@@ -306,6 +433,16 @@ const homeLinkStyle = {
   textDecoration: 'none',
   padding: '10px 14px',
   fontWeight: 'bold',
+};
+
+const lockButtonStyle = {
+  border: '1px solid #0055ff',
+  color: '#fff',
+  background: '#000',
+  padding: '10px 14px',
+  fontFamily: 'monospace',
+  fontWeight: 'bold',
+  cursor: 'pointer',
 };
 
 const tabRowStyle = {
@@ -399,6 +536,43 @@ const saveButtonStyle = {
   fontFamily: 'monospace',
   fontWeight: 'bold',
   cursor: 'pointer',
+};
+
+const savedListStyle = {
+  display: 'grid',
+  gap: '18px',
+  marginTop: '22px',
+};
+
+const savedSectionStyle = {
+  display: 'grid',
+  gap: '8px',
+};
+
+const savedItemStyle = {
+  display: 'grid',
+  gridTemplateColumns: 'minmax(0, 1fr) auto',
+  alignItems: 'center',
+  gap: '10px',
+  border: '1px solid rgba(0,85,255,0.4)',
+  padding: '9px',
+  color: '#d9e4ff',
+  fontSize: '12px',
+};
+
+const deleteButtonStyle = {
+  border: '1px solid #ef4444',
+  background: '#190506',
+  color: '#fff',
+  padding: '6px 8px',
+  fontFamily: 'monospace',
+  fontSize: '11px',
+  cursor: 'pointer',
+};
+
+const emptyTextStyle = {
+  color: '#6074b6',
+  fontSize: '12px',
 };
 
 const statusStyle = {

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { CONTENT_UPDATED_EVENT, getMergedContent } from './data/contentStore';
+import { CONTENT_UPDATED_EVENT, getMergedContent, loadMergedContent } from './data/contentStore';
 
 function ChatbotPopup({ mainImageUrl, onClose }) {
   const [content, setContent] = useState(() => getMergedContent());
@@ -8,10 +8,22 @@ function ChatbotPopup({ mainImageUrl, onClose }) {
   const selectedBot = chatbots.find((bot) => bot.id === selectedId) || chatbots[0];
 
   useEffect(() => {
-    const handleContentUpdate = () => setContent(getMergedContent());
+    let isMounted = true;
+    const syncContent = async () => {
+      const nextContent = await loadMergedContent();
+      if (isMounted) setContent(nextContent);
+    };
+    const handleContentUpdate = () => {
+      syncContent();
+    };
+
+    syncContent();
     window.addEventListener(CONTENT_UPDATED_EVENT, handleContentUpdate);
 
-    return () => window.removeEventListener(CONTENT_UPDATED_EVENT, handleContentUpdate);
+    return () => {
+      isMounted = false;
+      window.removeEventListener(CONTENT_UPDATED_EVENT, handleContentUpdate);
+    };
   }, []);
 
   return (
