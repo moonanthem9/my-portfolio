@@ -8,6 +8,7 @@ import {
   makeContentId,
   saveContentItem,
   setAdminPassword,
+  uploadImage,
 } from './data/contentStore';
 
 const initialForms = {
@@ -68,13 +69,27 @@ function AdminPage() {
     }));
   };
 
-  const handleImageUpload = (event) => {
+  const handleImageUpload = async (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = () => updateField('image', reader.result);
-    reader.readAsDataURL(file);
+    if (!password) {
+      setStatus('PASSWORD_REQUIRED');
+      return;
+    }
+
+    setIsBusy(true);
+    setStatus('UPLOADING_IMAGE');
+
+    try {
+      const imageUrl = await uploadImage(file, password);
+      updateField('image', imageUrl);
+      setStatus('IMAGE_UPLOADED');
+    } catch (error) {
+      setStatus(error.message === 'Unauthorized.' ? 'UNAUTHORIZED' : 'IMAGE_UPLOAD_FAILED');
+    } finally {
+      setIsBusy(false);
+    }
   };
 
   const handleUnlock = (event) => {
@@ -357,11 +372,12 @@ function TextArea({ label, value, onChange, minHeight = '160px' }) {
 function ImageField({ image, onUpload, onClear }) {
   return (
     <div style={labelStyle}>
-      <span style={labelTextStyle}>PHOTO</span>
+      <span style={labelTextStyle}>PHOTO / BLOB UPLOAD / MAX 3MB</span>
       <input type="file" accept="image/*" onChange={onUpload} style={fileInputStyle} />
       {image && (
         <div style={imagePreviewWrapStyle}>
           <img src={image} alt="" style={imagePreviewStyle} />
+          <div style={imageUrlStyle}>{image}</div>
           <button type="button" onClick={onClear} style={clearButtonStyle}>CLEAR PHOTO</button>
         </div>
       )}
@@ -510,6 +526,13 @@ const imagePreviewStyle = {
   maxHeight: '220px',
   objectFit: 'cover',
   border: '1px solid rgba(255,255,255,0.45)',
+};
+
+const imageUrlStyle = {
+  color: '#8fa7ff',
+  fontSize: '11px',
+  lineHeight: 1.5,
+  wordBreak: 'break-all',
 };
 
 const clearButtonStyle = {

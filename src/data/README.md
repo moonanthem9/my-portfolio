@@ -18,11 +18,12 @@ For Vercel production, set these environment variables:
 
 - `ADMIN_PASSWORD`: password required by the admin screen.
 - `GITHUB_CONTENT_TOKEN`: GitHub fine-grained token with repository Contents read/write permission.
+- `BLOB_READ_WRITE_TOKEN`: Vercel Blob read/write token for image uploads.
 - `GITHUB_OWNER`: optional, defaults to the connected Vercel repo owner.
 - `GITHUB_REPO`: optional, defaults to the connected Vercel repo name.
 - `GITHUB_BRANCH`: optional, defaults to `main`.
 
-Uploaded images are currently stored as data URLs inside `userContent.json`. This is simple and portable, but large images can make the JSON file heavy. A later version can move images to Vercel Blob, Cloudinary, or Supabase Storage.
+Uploaded images are sent to Vercel Blob through `/api/upload`. `userContent.json` stores only the public image URL.
 
 ## Chatbot Shape
 

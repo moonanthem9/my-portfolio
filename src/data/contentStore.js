@@ -85,6 +85,25 @@ export async function deleteContentItem(section, id, password) {
   return nextContent;
 }
 
+export async function uploadImage(file, password) {
+  const dataUrl = await fileToDataUrl(file);
+  const response = await fetch('/api/upload', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      password,
+      filename: file.name,
+      contentType: file.type,
+      dataUrl,
+    }),
+  });
+
+  if (!response.ok) throw new Error(await getApiError(response));
+
+  const payload = await response.json();
+  return payload.url;
+}
+
 export function getAdminPassword() {
   if (typeof window === 'undefined') return '';
 
@@ -129,4 +148,13 @@ async function getApiError(response) {
   } catch {
     return 'Content API failed.';
   }
+}
+
+function fileToDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(new Error('Could not read image.'));
+    reader.readAsDataURL(file);
+  });
 }
