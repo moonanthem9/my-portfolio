@@ -1,40 +1,8 @@
 import { useState } from 'react';
-
-const chatbots = [
-  {
-    id: 'ruin-signal',
-    name: 'RUIN SIGNAL',
-    imagePosition: 'center',
-    summary: '폐허가 된 네트워크 도시에서 사용자의 선택에 따라 태도를 바꾸는 SF 미스터리 챗봇.',
-    platforms: [
-      { label: 'Character.AI', href: 'https://example.com' },
-      { label: 'Chub', href: 'https://example.com' },
-    ],
-  },
-  {
-    id: 'blue-hour',
-    name: 'BLUE HOUR',
-    imagePosition: 'left center',
-    summary: '감정 기록과 대화 로그를 읽으며 관계를 복원하는 로맨스 기반 인터랙티브 챗봇.',
-    platforms: [
-      { label: 'JanitorAI', href: 'https://example.com' },
-    ],
-  },
-  {
-    id: 'winter-protocol',
-    name: 'WINTER PROTOCOL',
-    imagePosition: 'right center',
-    summary: '러시아어 대사와 차가운 생존 서사를 중심으로 설계한 호러 시뮬레이션 챗봇.',
-    platforms: [
-      { label: 'Character.AI', href: 'https://example.com' },
-      { label: 'Website', href: 'https://example.com' },
-      { label: 'Mirror', href: 'https://example.com' },
-    ],
-  },
-];
+import { chatbots } from './data/content';
 
 function ChatbotPopup({ mainImageUrl, onClose }) {
-  const [selectedId, setSelectedId] = useState(chatbots[0].id);
+  const [selectedId, setSelectedId] = useState(chatbots[0]?.id);
   const selectedBot = chatbots.find((bot) => bot.id === selectedId) || chatbots[0];
 
   return (
@@ -76,21 +44,25 @@ function ChatbotPopup({ mainImageUrl, onClose }) {
             <div style={{
               ...detailImageStyle,
               backgroundImage: `url(${mainImageUrl})`,
-              backgroundPosition: selectedBot.imagePosition,
+              backgroundPosition: selectedBot?.imagePosition || 'center',
             }} />
             <div style={detailTextStyle}>
-              <div style={fieldLabelStyle}>NAME</div>
-              <h3 style={detailTitleStyle}>{selectedBot.name}</h3>
-              <div style={fieldLabelStyle}>SUMMARY</div>
-              <p style={summaryStyle}>{selectedBot.summary}</p>
-              <div style={fieldLabelStyle}>PLAY_LINKS</div>
-              <div style={linkRowStyle}>
-                {selectedBot.platforms.map((platform) => (
-                  <a key={platform.label} href={platform.href} target="_blank" rel="noreferrer" style={linkStyle}>
-                    {platform.label}
-                  </a>
-                ))}
-              </div>
+              {selectedBot && (
+                <>
+                  <div style={fieldLabelStyle}>NAME</div>
+                  <h3 style={detailTitleStyle}>{selectedBot.name}</h3>
+                  <div style={fieldLabelStyle}>SUMMARY</div>
+                  <p style={summaryStyle}>{selectedBot.summary}</p>
+                  <div style={fieldLabelStyle}>PLAY_LINKS</div>
+                  <div style={linkRowStyle}>
+                    {selectedBot.platforms.map((platform) => (
+                      <a key={platform.label} href={platform.href} target="_blank" rel="noreferrer" style={linkStyle}>
+                        {platform.label}
+                      </a>
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
           </section>
         </div>

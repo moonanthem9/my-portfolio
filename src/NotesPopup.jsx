@@ -1,23 +1,4 @@
-const notes = [
-  {
-    date: '2026.07.09',
-    title: '캐릭터의 첫 문장은 세계관보다 먼저 온다',
-    body: '챗봇을 만들 때 긴 설정집보다 먼저 정하는 것은 첫 응답의 온도다. 사용자는 세계관을 읽으러 들어오는 것이 아니라, 누군가가 자신을 어떻게 맞이하는지 보러 들어온다.',
-    tags: ['OPENING', 'TONE'],
-  },
-  {
-    date: '2026.06.18',
-    title: '호러 챗봇에서 침묵을 쓰는 법',
-    body: '무서운 대사는 많이 쓰면 금방 소모된다. 대신 정보가 비어 있는 구간, 너무 늦게 오는 답장, 설명하지 않는 사물을 남기면 대화 자체가 공간처럼 느껴진다.',
-    tags: ['HORROR', 'PACING'],
-  },
-  {
-    date: '2026.05.22',
-    title: '플랫폼별 말투 조정 후기',
-    body: '같은 캐릭터라도 플랫폼마다 응답 길이와 검열, 반복 패턴이 다르다. 그래서 완성본 하나를 올리는 느낌보다, 각 플랫폼에 맞게 다른 공연 버전을 만드는 쪽에 가깝다.',
-    tags: ['REVIEW', 'PLATFORM'],
-  },
-];
+import { notes } from './data/content';
 
 function NotesPopup({ onClose }) {
   return (
@@ -32,7 +13,7 @@ function NotesPopup({ onClose }) {
 
         <div style={noteListStyle}>
           {notes.map((note) => (
-            <section key={note.title} style={noteStyle}>
+            <section key={note.id} style={noteStyle}>
               <div style={dateStyle}>{note.date}</div>
               <h3 style={noteTitleStyle}>{note.title}</h3>
               <p style={bodyStyle}>{note.body}</p>

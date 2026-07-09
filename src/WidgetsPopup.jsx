@@ -1,33 +1,14 @@
 import { useState } from 'react';
-
-const widgets = [
-  {
-    id: 'terminal-card',
-    name: 'TERMINAL PROFILE CARD',
-    description: '어두운 배경 위에 작은 프로필 터미널을 띄우는 HTML 위젯.',
-    html: `<div style="width:280px;border:2px solid #0055ff;background:#030712;color:#fff;font-family:monospace;padding:16px;box-shadow:0 0 30px rgba(0,85,255,.35)">
-  <div style="color:#0055ff;font-size:12px;letter-spacing:2px">ASTERISM.LOG</div>
-  <h3 style="margin:10px 0 8px;font-size:22px">AI CHATBOT CREATOR</h3>
-  <p style="margin:0;color:#b8c7ff;line-height:1.6;font-size:13px">Narrative systems, character bots, and tiny haunted interfaces.</p>
-</div>`,
-  },
-  {
-    id: 'link-badge',
-    name: 'BLUE ACCESS BADGE',
-    description: '챗봇 링크나 외부 페이지로 보내는 작은 버튼형 HTML 조각.',
-    html: `<a href="https://example.com" target="_blank" style="display:inline-flex;align-items:center;gap:8px;background:#0055ff;color:#fff;font-family:monospace;font-weight:700;text-decoration:none;padding:10px 14px;border:1px solid #fff">
-  <span>▶</span>
-  <span>PLAY CHATBOT</span>
-</a>`,
-  },
-];
+import { widgets } from './data/content';
 
 function WidgetsPopup({ onClose }) {
-  const [selectedId, setSelectedId] = useState(widgets[0].id);
+  const [selectedId, setSelectedId] = useState(widgets[0]?.id);
   const [copyStatus, setCopyStatus] = useState('COPY HTML');
   const selectedWidget = widgets.find((widget) => widget.id === selectedId) || widgets[0];
 
   const handleCopy = async () => {
+    if (!selectedWidget) return;
+
     try {
       await navigator.clipboard.writeText(selectedWidget.html);
       setCopyStatus('COPIED');
@@ -75,15 +56,15 @@ function WidgetsPopup({ onClose }) {
           <main style={previewColumnStyle}>
             <section style={previewFrameStyle}>
               <iframe
-                title={`${selectedWidget.name} preview`}
-                srcDoc={selectedWidget.html}
+                title={`${selectedWidget?.name || 'Widget'} preview`}
+                srcDoc={selectedWidget?.html || ''}
                 style={iframeStyle}
                 sandbox=""
               />
             </section>
             <section style={codeBlockStyle}>
-              <div style={codeHeaderStyle}>{selectedWidget.name}.html</div>
-              <pre style={preStyle}>{selectedWidget.html}</pre>
+              <div style={codeHeaderStyle}>{selectedWidget?.name || 'EMPTY'}.html</div>
+              <pre style={preStyle}>{selectedWidget?.html || ''}</pre>
             </section>
           </main>
         </div>
