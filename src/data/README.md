@@ -25,6 +25,8 @@ For Vercel production, set these environment variables:
 
 Uploaded images are sent to Vercel Blob through `/api/upload`. `userContent.json` stores only the public image URL.
 
+Deleting an entry removes its image from Vercel Blob when no remaining entry uses the same URL. Editing an entry preserves its `id` and original note `date`; if an image is replaced, the old image is removed when it is no longer referenced.
+
 ## Chatbot Shape
 
 ```js

@@ -1,3 +1,4 @@
+import { del } from '@vercel/blob';
 import { Buffer } from 'node:buffer';
 import process from 'node:process';
 
@@ -44,16 +45,39 @@ export default async function handler(request, response) {
       if (!id) throw createHttpError(400, 'Missing item id.');
 
       const { content, sha } = await readContentFile();
+      const deletedItem = content[section].find((item) => item.id === id);
       const nextContent = normalizeContent({
         ...content,
         [section]: content[section].filter((item) => item.id !== id),
       });
 
       await writeContentFile(nextContent, sha, `Delete ${section} entry`);
+      await cleanupUnusedImages([deletedItem?.image], nextContent);
       return response.status(200).json(nextContent);
     }
 
-    response.setHeader('Allow', 'GET, POST, DELETE');
+    if (request.method === 'PUT') {
+      assertAdmin(body.password);
+
+      const { section, item } = body;
+      assertValidSection(section);
+      if (!item?.id) throw createHttpError(400, 'Missing item id.');
+
+      const { content, sha } = await readContentFile();
+      const previousItem = content[section].find((entry) => entry.id === item.id);
+      if (!previousItem) throw createHttpError(404, 'Entry not found.');
+
+      const nextContent = normalizeContent({
+        ...content,
+        [section]: content[section].map((entry) => entry.id === item.id ? item : entry),
+      });
+
+      await writeContentFile(nextContent, sha, `Update ${section} entry`);
+      await cleanupUnusedImages([previousItem.image], nextContent);
+      return response.status(200).json(nextContent);
+    }
+
+    response.setHeader('Allow', 'GET, POST, PUT, DELETE');
     return response.status(405).json({ error: 'Method not allowed.' });
   } catch (error) {
     const status = error.status || 500;
@@ -156,6 +180,36 @@ function normalizeContent(content) {
     notes: Array.isArray(content.notes) ? content.notes : [],
     widgets: Array.isArray(content.widgets) ? content.widgets : [],
   };
+}
+
+async function cleanupUnusedImages(imageUrls, content) {
+  const activeImages = new Set(getAllImages(content));
+  const uniqueUrls = [...new Set(imageUrls.filter(Boolean))];
+
+  await Promise.all(uniqueUrls.map(async (url) => {
+    if (!isVercelBlobUrl(url) || activeImages.has(url)) return;
+    try {
+      await del(url);
+    } catch (error) {
+      console.error(`Could not delete blob: ${url}`, error);
+    }
+  }));
+}
+
+function getAllImages(content) {
+  return VALID_SECTIONS.flatMap((section) => (
+    content[section]
+      .map((item) => item.image)
+      .filter(Boolean)
+  ));
+}
+
+function isVercelBlobUrl(url) {
+  try {
+    return new URL(url).hostname.endsWith('.public.blob.vercel-storage.com');
+  } catch {
+    return false;
+  }
 }
 
 function parseBody(body) {

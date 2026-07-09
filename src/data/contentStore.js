@@ -69,6 +69,22 @@ export async function saveContentItem(section, item, password) {
   return nextContent;
 }
 
+export async function updateContentItem(section, item, password) {
+  const response = await fetch('/api/content', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ section, item, password }),
+  });
+
+  if (!response.ok) throw new Error(await getApiError(response));
+
+  const nextContent = normalizeContent(await response.json());
+  cacheLocalContent(nextContent);
+  window.dispatchEvent(new CustomEvent(CONTENT_UPDATED_EVENT));
+
+  return nextContent;
+}
+
 export async function deleteContentItem(section, id, password) {
   const response = await fetch('/api/content', {
     method: 'DELETE',

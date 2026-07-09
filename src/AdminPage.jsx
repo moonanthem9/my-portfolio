@@ -8,6 +8,7 @@ import {
   makeContentId,
   saveContentItem,
   setAdminPassword,
+  updateContentItem,
   uploadImage,
 } from './data/contentStore';
 
@@ -43,6 +44,7 @@ function AdminPage() {
   const [savedContent, setSavedContent] = useState(() => getStoredContent());
   const [password, setPassword] = useState(() => getAdminPassword());
   const [isUnlocked, setIsUnlocked] = useState(() => Boolean(getAdminPassword()));
+  const [editingEntry, setEditingEntry] = useState(null);
   const [isBusy, setIsBusy] = useState(false);
   const [status, setStatus] = useState('READY');
 
@@ -121,25 +123,44 @@ function AdminPage() {
   const handleSubmit = async (event) => {
     event.preventDefault();
 
-    const item = buildContentItem(section, activeForm);
+    const item = buildContentItem(section, activeForm, editingEntry);
     if (!item) {
       setStatus('TITLE_REQUIRED');
       return;
     }
 
     setIsBusy(true);
-    setStatus('SAVING');
+    setStatus(editingEntry ? 'UPDATING' : 'SAVING');
 
     try {
-      const nextContent = await saveContentItem(section, item, password);
+      const nextContent = editingEntry
+        ? await updateContentItem(section, item, password)
+        : await saveContentItem(section, item, password);
       setSavedContent(nextContent);
       setForms((prev) => ({ ...prev, [section]: initialForms[section] }));
-      setStatus('SAVED_TO_GITHUB');
+      setEditingEntry(null);
+      setStatus(editingEntry ? 'UPDATED_IN_GITHUB' : 'SAVED_TO_GITHUB');
     } catch (error) {
-      setStatus(error.message === 'Unauthorized.' ? 'UNAUTHORIZED' : 'SAVE_FAILED');
+      setStatus(error.message === 'Unauthorized.' ? 'UNAUTHORIZED' : `SAVE_FAILED: ${error.message}`);
     } finally {
       setIsBusy(false);
     }
+  };
+
+  const handleEdit = (targetSection, item) => {
+    setSection(targetSection);
+    setEditingEntry({ section: targetSection, id: item.id, item });
+    setForms((prev) => ({
+      ...prev,
+      [targetSection]: formFromContentItem(targetSection, item),
+    }));
+    setStatus('EDITING_ENTRY');
+  };
+
+  const handleCancelEdit = () => {
+    setForms((prev) => ({ ...prev, [section]: initialForms[section] }));
+    setEditingEntry(null);
+    setStatus('EDIT_CANCELLED');
   };
 
   const handleDelete = async (targetSection, id) => {
@@ -149,9 +170,12 @@ function AdminPage() {
     try {
       const nextContent = await deleteContentItem(targetSection, id, password);
       setSavedContent(nextContent);
+      if (editingEntry?.section === targetSection && editingEntry.id === id) {
+        handleCancelEdit();
+      }
       setStatus('DELETED_FROM_GITHUB');
     } catch (error) {
-      setStatus(error.message === 'Unauthorized.' ? 'UNAUTHORIZED' : 'DELETE_FAILED');
+      setStatus(error.message === 'Unauthorized.' ? 'UNAUTHORIZED' : `DELETE_FAILED: ${error.message}`);
     } finally {
       setIsBusy(false);
     }
@@ -198,6 +222,7 @@ function AdminPage() {
                   type="button"
                   onClick={() => {
                     setSection(id);
+                    setEditingEntry(null);
                     setStatus('READY');
                   }}
                   style={{
@@ -246,7 +271,12 @@ function AdminPage() {
               )}
 
               <div style={actionRowStyle}>
-                <button type="submit" disabled={isBusy} style={saveButtonStyle}>SAVE ENTRY</button>
+                <button type="submit" disabled={isBusy} style={saveButtonStyle}>
+                  {editingEntry ? 'UPDATE ENTRY' : 'SAVE ENTRY'}
+                </button>
+                {editingEntry && (
+                  <button type="button" onClick={handleCancelEdit} disabled={isBusy} style={cancelButtonStyle}>CANCEL EDIT</button>
+                )}
                 <div style={statusStyle}>STATUS: {status}</div>
               </div>
             </form>
@@ -261,7 +291,7 @@ function AdminPage() {
         <ContentCount label="CHATBOTS" count={savedContent.chatbots.length} />
         <ContentCount label="WIDGETS" count={savedContent.widgets.length} />
         {isUnlocked && (
-          <SavedContentList content={savedContent} onDelete={handleDelete} isBusy={isBusy} />
+          <SavedContentList content={savedContent} onEdit={handleEdit} onDelete={handleDelete} isBusy={isBusy} />
         )}
         <p style={hintStyle}>저장과 삭제는 GitHub의 `src/data/userContent.json`에 커밋됩니다. Vercel 환경 변수 설정이 필요합니다.</p>
       </aside>
@@ -269,13 +299,13 @@ function AdminPage() {
   );
 }
 
-function buildContentItem(section, form) {
+function buildContentItem(section, form, editingEntry) {
   if (section === 'notes') {
     if (!form.title.trim()) return null;
 
     return {
-      id: makeContentId(form.title),
-      date: new Date().toISOString().slice(0, 10).replace(/-/g, '.'),
+      id: editingEntry?.id || makeContentId(form.title),
+      date: editingEntry?.item?.date || new Date().toISOString().slice(0, 10).replace(/-/g, '.'),
       title: form.title.trim(),
       body: form.body.trim(),
       image: form.image,
@@ -294,7 +324,7 @@ function buildContentItem(section, form) {
       .filter((platform) => platform.label && platform.href);
 
     return {
-      id: makeContentId(form.name),
+      id: editingEntry?.id || makeContentId(form.name),
       name: form.name.trim(),
       summary: form.summary.trim(),
       image: form.image,
@@ -307,7 +337,7 @@ function buildContentItem(section, form) {
     if (!form.name.trim()) return null;
 
     return {
-      id: makeContentId(form.name),
+      id: editingEntry?.id || makeContentId(form.name),
       name: form.name.trim(),
       description: form.description.trim(),
       html: form.html,
@@ -315,6 +345,43 @@ function buildContentItem(section, form) {
   }
 
   return null;
+}
+
+function formFromContentItem(section, item) {
+  if (section === 'notes') {
+    return {
+      title: item.title || '',
+      body: item.body || '',
+      image: item.image || '',
+      tags: (item.tags || []).join(', '),
+    };
+  }
+
+  if (section === 'chatbots') {
+    const platforms = item.platforms || [];
+
+    return {
+      name: item.name || '',
+      summary: item.summary || '',
+      image: item.image || '',
+      platform1Label: platforms[0]?.label || '',
+      platform1Href: platforms[0]?.href || '',
+      platform2Label: platforms[1]?.label || '',
+      platform2Href: platforms[1]?.href || '',
+      platform3Label: platforms[2]?.label || '',
+      platform3Href: platforms[2]?.href || '',
+    };
+  }
+
+  if (section === 'widgets') {
+    return {
+      name: item.name || '',
+      description: item.description || '',
+      html: item.html || '',
+    };
+  }
+
+  return initialForms[section];
 }
 
 function Field({ label, value, onChange, placeholder = '', type = 'text' }) {
@@ -332,7 +399,7 @@ function Field({ label, value, onChange, placeholder = '', type = 'text' }) {
   );
 }
 
-function SavedContentList({ content, onDelete, isBusy }) {
+function SavedContentList({ content, onEdit, onDelete, isBusy }) {
   return (
     <div style={savedListStyle}>
       {[
@@ -346,14 +413,24 @@ function SavedContentList({ content, onDelete, isBusy }) {
           {content[section].map((item) => (
             <div key={item.id} style={savedItemStyle}>
               <span>{item.title || item.name}</span>
-              <button
-                type="button"
-                disabled={isBusy}
-                onClick={() => onDelete(section, item.id)}
-                style={deleteButtonStyle}
-              >
-                DELETE
-              </button>
+              <div style={savedActionStyle}>
+                <button
+                  type="button"
+                  disabled={isBusy}
+                  onClick={() => onEdit(section, item)}
+                  style={editButtonStyle}
+                >
+                  EDIT
+                </button>
+                <button
+                  type="button"
+                  disabled={isBusy}
+                  onClick={() => onDelete(section, item.id)}
+                  style={deleteButtonStyle}
+                >
+                  DELETE
+                </button>
+              </div>
             </div>
           ))}
         </section>
@@ -567,6 +644,16 @@ const saveButtonStyle = {
   cursor: 'pointer',
 };
 
+const cancelButtonStyle = {
+  border: '1px solid #6074b6',
+  background: '#050812',
+  color: '#fff',
+  padding: '12px 18px',
+  fontFamily: 'monospace',
+  fontWeight: 'bold',
+  cursor: 'pointer',
+};
+
 const savedListStyle = {
   display: 'grid',
   gap: '18px',
@@ -587,6 +674,21 @@ const savedItemStyle = {
   padding: '9px',
   color: '#d9e4ff',
   fontSize: '12px',
+};
+
+const savedActionStyle = {
+  display: 'flex',
+  gap: '6px',
+};
+
+const editButtonStyle = {
+  border: '1px solid #0055ff',
+  background: '#06122f',
+  color: '#fff',
+  padding: '6px 8px',
+  fontFamily: 'monospace',
+  fontSize: '11px',
+  cursor: 'pointer',
 };
 
 const deleteButtonStyle = {
