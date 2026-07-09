@@ -1,10 +1,19 @@
-import { useState } from 'react';
-import { widgets } from './data/content';
+import { useEffect, useState } from 'react';
+import { CONTENT_UPDATED_EVENT, getMergedContent } from './data/contentStore';
 
 function WidgetsPopup({ onClose }) {
+  const [content, setContent] = useState(() => getMergedContent());
+  const { widgets } = content;
   const [selectedId, setSelectedId] = useState(widgets[0]?.id);
   const [copyStatus, setCopyStatus] = useState('COPY HTML');
   const selectedWidget = widgets.find((widget) => widget.id === selectedId) || widgets[0];
+
+  useEffect(() => {
+    const handleContentUpdate = () => setContent(getMergedContent());
+    window.addEventListener(CONTENT_UPDATED_EVENT, handleContentUpdate);
+
+    return () => window.removeEventListener(CONTENT_UPDATED_EVENT, handleContentUpdate);
+  }, []);
 
   const handleCopy = async () => {
     if (!selectedWidget) return;

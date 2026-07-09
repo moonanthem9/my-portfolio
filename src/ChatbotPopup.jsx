@@ -1,9 +1,18 @@
-import { useState } from 'react';
-import { chatbots } from './data/content';
+import { useEffect, useState } from 'react';
+import { CONTENT_UPDATED_EVENT, getMergedContent } from './data/contentStore';
 
 function ChatbotPopup({ mainImageUrl, onClose }) {
+  const [content, setContent] = useState(() => getMergedContent());
+  const { chatbots } = content;
   const [selectedId, setSelectedId] = useState(chatbots[0]?.id);
   const selectedBot = chatbots.find((bot) => bot.id === selectedId) || chatbots[0];
+
+  useEffect(() => {
+    const handleContentUpdate = () => setContent(getMergedContent());
+    window.addEventListener(CONTENT_UPDATED_EVENT, handleContentUpdate);
+
+    return () => window.removeEventListener(CONTENT_UPDATED_EVENT, handleContentUpdate);
+  }, []);
 
   return (
     <div onClick={onClose} style={overlayStyle}>
@@ -32,7 +41,7 @@ function ChatbotPopup({ mainImageUrl, onClose }) {
               >
                 <span style={{
                   ...thumbStyle,
-                  backgroundImage: `url(${mainImageUrl})`,
+                  backgroundImage: `url(${bot.image || mainImageUrl})`,
                   backgroundPosition: bot.imagePosition,
                 }} />
                 <span style={cardLabelStyle}>{bot.name}</span>
@@ -43,7 +52,7 @@ function ChatbotPopup({ mainImageUrl, onClose }) {
           <section style={detailStyle}>
             <div style={{
               ...detailImageStyle,
-              backgroundImage: `url(${mainImageUrl})`,
+              backgroundImage: `url(${selectedBot?.image || mainImageUrl})`,
               backgroundPosition: selectedBot?.imagePosition || 'center',
             }} />
             <div style={detailTextStyle}>

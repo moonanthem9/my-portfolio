@@ -1,6 +1,19 @@
-import { notes } from './data/content';
+import { useEffect, useState } from 'react';
+import { CONTENT_UPDATED_EVENT, getMergedContent } from './data/contentStore';
 
 function NotesPopup({ onClose }) {
+  const [content, setContent] = useState(() => getMergedContent());
+  const { notes } = content;
+  const [selectedId, setSelectedId] = useState(notes[0]?.id);
+  const selectedNote = notes.find((note) => note.id === selectedId) || notes[0];
+
+  useEffect(() => {
+    const handleContentUpdate = () => setContent(getMergedContent());
+    window.addEventListener(CONTENT_UPDATED_EVENT, handleContentUpdate);
+
+    return () => window.removeEventListener(CONTENT_UPDATED_EVENT, handleContentUpdate);
+  }, []);
+
   return (
     <div onClick={onClose} style={overlayStyle}>
       <article onClick={(e) => e.stopPropagation()} style={panelStyle}>
@@ -11,19 +24,40 @@ function NotesPopup({ onClose }) {
           <p style={introStyle}>챗봇 제작 노트, 후기, 짧은 일기들을 쌓아두는 블로그형 공간.</p>
         </header>
 
-        <div style={noteListStyle}>
-          {notes.map((note) => (
-            <section key={note.id} style={noteStyle}>
-              <div style={dateStyle}>{note.date}</div>
-              <h3 style={noteTitleStyle}>{note.title}</h3>
-              <p style={bodyStyle}>{note.body}</p>
+        <div style={contentStyle}>
+          <div style={noteListStyle}>
+            {notes.map((note) => (
+              <button
+                key={note.id}
+                type="button"
+                onClick={() => setSelectedId(note.id)}
+                style={{
+                  ...noteButtonStyle,
+                  borderColor: selectedId === note.id ? '#fff' : 'rgba(0,85,255,0.75)',
+                  color: selectedId === note.id ? '#fff' : '#d9e4ff',
+                }}
+              >
+                <span style={dateStyle}>{note.date}</span>
+                <span style={noteButtonTitleStyle}>{note.title}</span>
+              </button>
+            ))}
+          </div>
+
+          {selectedNote && (
+            <section style={noteDetailStyle}>
+              <div style={dateStyle}>{selectedNote.date}</div>
+              <h3 style={noteTitleStyle}>{selectedNote.title}</h3>
+              {selectedNote.image && (
+                <img src={selectedNote.image} alt="" style={noteImageStyle} />
+              )}
+              <p style={bodyStyle}>{selectedNote.body}</p>
               <div style={tagRowStyle}>
-                {note.tags.map((tag) => (
+                {selectedNote.tags.map((tag) => (
                   <span key={tag} style={tagStyle}>{tag}</span>
                 ))}
               </div>
             </section>
-          ))}
+          )}
         </div>
       </article>
     </div>
@@ -94,13 +128,37 @@ const introStyle = {
   lineHeight: 1.7,
 };
 
-const noteListStyle = {
+const contentStyle = {
   display: 'grid',
-  gap: '16px',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))',
+  gap: '18px',
   padding: '24px',
 };
 
-const noteStyle = {
+const noteListStyle = {
+  display: 'grid',
+  gap: '10px',
+  alignContent: 'start',
+};
+
+const noteButtonStyle = {
+  border: '1px dashed rgba(0,85,255,0.75)',
+  background: 'rgba(255,255,255,0.035)',
+  padding: '14px',
+  cursor: 'pointer',
+  display: 'grid',
+  gap: '8px',
+  textAlign: 'left',
+  fontFamily: 'monospace',
+};
+
+const noteButtonTitleStyle = {
+  fontSize: '15px',
+  lineHeight: 1.45,
+  fontWeight: 'bold',
+};
+
+const noteDetailStyle = {
   border: '1px dashed rgba(0,85,255,0.75)',
   background: 'rgba(255,255,255,0.035)',
   padding: '20px',
@@ -126,6 +184,15 @@ const bodyStyle = {
   color: '#d9e4ff',
   fontSize: '14px',
   lineHeight: 1.8,
+  whiteSpace: 'pre-wrap',
+};
+
+const noteImageStyle = {
+  width: '100%',
+  maxHeight: '320px',
+  objectFit: 'cover',
+  border: '1px solid rgba(255,255,255,0.45)',
+  marginBottom: '16px',
 };
 
 const tagRowStyle = {

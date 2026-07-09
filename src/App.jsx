@@ -1,10 +1,12 @@
 import { useState, useRef, useEffect } from 'react';
+import AdminPage from './AdminPage';
 import ChatbotPopup from './ChatbotPopup';
 import NotesPopup from './NotesPopup';
 import ProfilePopup from './ProfilePopup';
 import WidgetsPopup from './WidgetsPopup';
 
 function App() {
+  const isAdminRoute = window.location.pathname === '/admin';
   const [windowSize, setWindowSize] = useState({ w: window.innerWidth, h: window.innerHeight });
   const [time, setTime] = useState(new Date());
   
@@ -112,6 +114,10 @@ function App() {
   };
 
   const handlePointerUp = () => setDraggingId(null);
+
+  if (isAdminRoute) {
+    return <AdminPage />;
+  }
 
   // --- 부팅 시퀀스 화면 ---
   if (isBooting) {
