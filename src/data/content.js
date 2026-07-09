@@ -62,17 +62,25 @@ export const widgets = [
     description: '어두운 배경 위에 작은 프로필 터미널을 띄우는 HTML 위젯.',
     html: `<div style="width:280px;border:2px solid #0055ff;background:#030712;color:#fff;font-family:monospace;padding:16px;box-shadow:0 0 30px rgba(0,85,255,.35)">
   <div style="color:#0055ff;font-size:12px;letter-spacing:2px">ASTERISM.LOG</div>
-  <h3 style="margin:10px 0 8px;font-size:22px">AI CHATBOT CREATOR</h3>
-  <p style="margin:0;color:#b8c7ff;line-height:1.6;font-size:13px">Narrative systems, character bots, and tiny haunted interfaces.</p>
+  <h3 style="margin:10px 0 8px;font-size:22px">{{title}}</h3>
+  <p style="margin:0;color:#b8c7ff;line-height:1.6;font-size:13px">{{message}}</p>
 </div>`,
+    fields: [
+      { key: 'title', label: 'Title', defaultValue: 'AI CHATBOT CREATOR' },
+      { key: 'message', label: 'Message', defaultValue: 'Narrative systems, character bots, and tiny haunted interfaces.' },
+    ],
   },
   {
     id: 'link-badge',
     name: 'BLUE ACCESS BADGE',
     description: '챗봇 링크나 외부 페이지로 보내는 작은 버튼형 HTML 조각.',
-    html: `<a href="https://example.com" target="_blank" style="display:inline-flex;align-items:center;gap:8px;background:#0055ff;color:#fff;font-family:monospace;font-weight:700;text-decoration:none;padding:10px 14px;border:1px solid #fff">
+    html: `<a href="{{url}}" target="_blank" style="display:inline-flex;align-items:center;gap:8px;background:#0055ff;color:#fff;font-family:monospace;font-weight:700;text-decoration:none;padding:10px 14px;border:1px solid #fff">
   <span>▶</span>
-  <span>PLAY CHATBOT</span>
+  <span>{{label}}</span>
 </a>`,
+    fields: [
+      { key: 'url', label: 'URL', defaultValue: 'https://example.com' },
+      { key: 'label', label: 'Label', defaultValue: 'PLAY CHATBOT' },
+    ],
   },
 ];

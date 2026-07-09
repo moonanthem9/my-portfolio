@@ -368,6 +368,38 @@
   background: transparent;
 }
 
+.customizer-card {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid rgba(117, 255, 184, 0.35);
+  background: rgba(255, 255, 255, 0.055);
+}
+
+.customizer-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr));
+  gap: 10px;
+}
+
+.customizer-field {
+  display: grid;
+  gap: 6px;
+  color: #c6d2ff;
+  font-size: 12px;
+}
+
+.customizer-field input {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid rgba(117, 255, 184, 0.38);
+  background: rgba(0, 0, 0, 0.48);
+  color: #fff;
+  padding: 10px;
+  font: 13px/1.5 monospace;
+  outline: none;
+}
+
 .code-card {
   min-width: 0;
   border: 1px solid rgba(255, 255, 255, 0.16);

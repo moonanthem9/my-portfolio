@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import './archivePopup.css';
 import { CONTENT_UPDATED_EVENT, getMergedContent, loadMergedContent } from './data/contentStore';
 
@@ -6,8 +6,15 @@ function WidgetsPopup({ onClose }) {
   const [content, setContent] = useState(() => getMergedContent());
   const { widgets } = content;
   const [selectedId, setSelectedId] = useState(widgets[0]?.id);
+  const [fieldValues, setFieldValues] = useState({});
   const [copyStatus, setCopyStatus] = useState('COPY HTML');
   const selectedWidget = widgets.find((widget) => widget.id === selectedId) || widgets[0];
+  const currentFields = useMemo(() => selectedWidget?.fields || [], [selectedWidget?.fields]);
+  const mergedFieldValues = useMemo(
+    () => ({ ...getDefaultFieldValues(currentFields), ...fieldValues }),
+    [currentFields, fieldValues],
+  );
+  const renderedHtml = renderTemplate(selectedWidget?.html || '', mergedFieldValues, currentFields);
 
   useEffect(() => {
     let isMounted = true;
@@ -32,7 +39,7 @@ function WidgetsPopup({ onClose }) {
     if (!selectedWidget) return;
 
     try {
-      await navigator.clipboard.writeText(selectedWidget.html);
+      await navigator.clipboard.writeText(renderedHtml);
       setCopyStatus('COPIED');
       setTimeout(() => setCopyStatus('COPY HTML'), 1400);
     } catch {
@@ -64,6 +71,7 @@ function WidgetsPopup({ onClose }) {
                   className={`widget-button ${selectedId === widget.id ? 'is-active' : ''}`}
                   onClick={() => {
                     setSelectedId(widget.id);
+                    setFieldValues({});
                     setCopyStatus('COPY HTML');
                   }}
                 >
@@ -77,16 +85,37 @@ function WidgetsPopup({ onClose }) {
               <section className="preview-frame">
                 <iframe
                   title={`${selectedWidget?.name || 'Widget'} preview`}
-                  srcDoc={selectedWidget?.html || ''}
+                  srcDoc={renderedHtml}
                   sandbox=""
                 />
               </section>
+              {currentFields.length > 0 && (
+                <section className="customizer-card">
+                  <div className="field-label">CUSTOMIZE</div>
+                  <div className="customizer-grid">
+                    {currentFields.map((field) => (
+                      <label key={field.key} className="customizer-field">
+                        <span>{field.label || field.key}</span>
+                        <input
+                          value={mergedFieldValues[field.key] || ''}
+                          onChange={(event) => {
+                            setFieldValues((prev) => ({
+                              ...prev,
+                              [field.key]: event.target.value,
+                            }));
+                          }}
+                        />
+                      </label>
+                    ))}
+                  </div>
+                </section>
+              )}
               <section className="code-card">
                 <div className="code-header">
                   <span>{selectedWidget?.name || 'EMPTY'}.html</span>
                   <button type="button" onClick={handleCopy} className="copy-button">{copyStatus}</button>
                 </div>
-                <pre>{selectedWidget?.html || ''}</pre>
+                <pre>{renderedHtml}</pre>
               </section>
             </main>
           </div>
@@ -94,6 +123,17 @@ function WidgetsPopup({ onClose }) {
       </div>
     </div>
   );
+}
+
+function getDefaultFieldValues(fields) {
+  return Object.fromEntries(fields.map((field) => [field.key, field.defaultValue || '']));
+}
+
+function renderTemplate(html, values, fields) {
+  return fields.reduce((result, field) => {
+    const value = values[field.key] ?? field.defaultValue ?? '';
+    return result.replaceAll(`{{${field.key}}}`, value);
+  }, html);
 }
 
 export default WidgetsPopup;

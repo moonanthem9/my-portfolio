@@ -61,6 +61,11 @@ Deleting an entry removes its image from Vercel Blob when no remaining entry use
   id: 'unique-id',
   name: 'WIDGET NAME',
   description: 'Short description.',
-  html: '<div>Shareable HTML</div>',
+  html: '<div>{{name}}</div>',
+  fields: [
+    { key: 'name', label: 'Name', defaultValue: 'ASTERISM' },
+  ],
 }
 ```
+
+Widget HTML supports `{{key}}` placeholders. The widget popup renders input controls from `fields`, replaces placeholders in real time, previews the rendered HTML, and copies the rendered HTML.

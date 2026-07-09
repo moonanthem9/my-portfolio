@@ -34,6 +34,7 @@ const initialForms = {
     name: '',
     description: '',
     html: '',
+    fields: [],
   },
 };
 const MAX_UPLOAD_BYTES = 3 * 1024 * 1024;
@@ -68,6 +69,38 @@ function AdminPage() {
       [section]: {
         ...prev[section],
         [field]: value,
+      },
+    }));
+  };
+
+  const updateWidgetField = (index, field, value) => {
+    setForms((prev) => ({
+      ...prev,
+      widgets: {
+        ...prev.widgets,
+        fields: prev.widgets.fields.map((entry, entryIndex) => (
+          entryIndex === index ? { ...entry, [field]: value } : entry
+        )),
+      },
+    }));
+  };
+
+  const addWidgetField = () => {
+    setForms((prev) => ({
+      ...prev,
+      widgets: {
+        ...prev.widgets,
+        fields: [...prev.widgets.fields, { key: '', label: '', defaultValue: '' }],
+      },
+    }));
+  };
+
+  const removeWidgetField = (index) => {
+    setForms((prev) => ({
+      ...prev,
+      widgets: {
+        ...prev.widgets,
+        fields: prev.widgets.fields.filter((_, entryIndex) => entryIndex !== index),
       },
     }));
   };
@@ -267,6 +300,12 @@ function AdminPage() {
                   <Field label="NAME" value={activeForm.name} onChange={(value) => updateField('name', value)} />
                   <Field label="DESCRIPTION" value={activeForm.description} onChange={(value) => updateField('description', value)} />
                   <TextArea label="HTML" value={activeForm.html} onChange={(value) => updateField('html', value)} minHeight="260px" />
+                  <WidgetFieldsEditor
+                    fields={activeForm.fields}
+                    onAdd={addWidgetField}
+                    onRemove={removeWidgetField}
+                    onChange={updateWidgetField}
+                  />
                 </>
               )}
 
@@ -341,6 +380,7 @@ function buildContentItem(section, form, editingEntry) {
       name: form.name.trim(),
       description: form.description.trim(),
       html: form.html,
+      fields: normalizeWidgetFields(form.fields),
     };
   }
 
@@ -378,10 +418,21 @@ function formFromContentItem(section, item) {
       name: item.name || '',
       description: item.description || '',
       html: item.html || '',
+      fields: item.fields || [],
     };
   }
 
   return initialForms[section];
+}
+
+function normalizeWidgetFields(fields) {
+  return fields
+    .map((field) => ({
+      key: field.key.trim(),
+      label: field.label.trim() || field.key.trim(),
+      defaultValue: field.defaultValue,
+    }))
+    .filter((field) => field.key);
 }
 
 function Field({ label, value, onChange, placeholder = '', type = 'text' }) {
@@ -436,6 +487,29 @@ function SavedContentList({ content, onEdit, onDelete, isBusy }) {
         </section>
       ))}
     </div>
+  );
+}
+
+function WidgetFieldsEditor({ fields, onAdd, onRemove, onChange }) {
+  return (
+    <section style={variablePanelStyle}>
+      <div style={variableHeaderStyle}>
+        <div>
+          <div style={labelTextStyle}>WIDGET VARIABLES</div>
+          <p style={variableHintStyle}>HTML에 {'{{key}}'}를 쓰고, 여기서 key와 기본값을 정의하세요.</p>
+        </div>
+        <button type="button" onClick={onAdd} style={smallButtonStyle}>ADD VARIABLE</button>
+      </div>
+      {fields.length === 0 && <div style={emptyTextStyle}>NO VARIABLES</div>}
+      {fields.map((field, index) => (
+        <div key={index} style={variableRowStyle}>
+          <Field label="KEY" value={field.key} onChange={(value) => onChange(index, 'key', value)} placeholder="name" />
+          <Field label="LABEL" value={field.label} onChange={(value) => onChange(index, 'label', value)} placeholder="Name" />
+          <Field label="DEFAULT" value={field.defaultValue} onChange={(value) => onChange(index, 'defaultValue', value)} placeholder="ASTERISM" />
+          <button type="button" onClick={() => onRemove(index)} style={deleteButtonStyle}>REMOVE</button>
+        </div>
+      ))}
+    </section>
   );
 }
 
@@ -704,6 +778,46 @@ const deleteButtonStyle = {
 const emptyTextStyle = {
   color: '#6074b6',
   fontSize: '12px',
+};
+
+const variablePanelStyle = {
+  display: 'grid',
+  gap: '14px',
+  border: '1px solid rgba(0,85,255,0.45)',
+  padding: '14px',
+  background: 'rgba(0,0,0,0.25)',
+};
+
+const variableHeaderStyle = {
+  display: 'flex',
+  justifyContent: 'space-between',
+  gap: '14px',
+  alignItems: 'start',
+};
+
+const variableHintStyle = {
+  margin: '6px 0 0',
+  color: '#8fa7ff',
+  fontSize: '12px',
+  lineHeight: 1.6,
+};
+
+const variableRowStyle = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 160px), 1fr))',
+  gap: '10px',
+  alignItems: 'end',
+};
+
+const smallButtonStyle = {
+  border: '1px solid #0055ff',
+  background: '#06122f',
+  color: '#fff',
+  padding: '8px 10px',
+  fontFamily: 'monospace',
+  fontSize: '11px',
+  cursor: 'pointer',
+  whiteSpace: 'nowrap',
 };
 
 const statusStyle = {
