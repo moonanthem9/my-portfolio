@@ -1,5 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
+import ChatbotPopup from './ChatbotPopup';
+import NotesPopup from './NotesPopup';
 import ProfilePopup from './ProfilePopup';
+import WidgetsPopup from './WidgetsPopup';
 
 function App() {
   const [windowSize, setWindowSize] = useState({ w: window.innerWidth, h: window.innerHeight });
@@ -268,6 +271,21 @@ function App() {
           mainImageUrl={MAIN_IMAGE_URL}
           onClose={() => setActivePopup(null)}
         />
+      )}
+
+      {activePopup === 'CHATBOT' && (
+        <ChatbotPopup
+          mainImageUrl={MAIN_IMAGE_URL}
+          onClose={() => setActivePopup(null)}
+        />
+      )}
+
+      {activePopup === 'NOTES' && (
+        <NotesPopup onClose={() => setActivePopup(null)} />
+      )}
+
+      {activePopup === 'WIDGETS' && (
+        <WidgetsPopup onClose={() => setActivePopup(null)} />
       )}
       
     </div>
