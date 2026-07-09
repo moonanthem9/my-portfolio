@@ -35,6 +35,7 @@ const initialForms = {
     html: '',
   },
 };
+const MAX_UPLOAD_BYTES = 3 * 1024 * 1024;
 
 function AdminPage() {
   const [section, setSection] = useState('notes');
@@ -73,6 +74,11 @@ function AdminPage() {
     const file = event.target.files?.[0];
     if (!file) return;
 
+    if (file.size > MAX_UPLOAD_BYTES) {
+      setStatus('IMAGE_TOO_LARGE_MAX_3MB');
+      return;
+    }
+
     if (!password) {
       setStatus('PASSWORD_REQUIRED');
       return;
@@ -86,7 +92,7 @@ function AdminPage() {
       updateField('image', imageUrl);
       setStatus('IMAGE_UPLOADED');
     } catch (error) {
-      setStatus(error.message === 'Unauthorized.' ? 'UNAUTHORIZED' : 'IMAGE_UPLOAD_FAILED');
+      setStatus(`IMAGE_UPLOAD_FAILED: ${error.message}`);
     } finally {
       setIsBusy(false);
     }

@@ -14,9 +14,10 @@ export default async function handler(request, response) {
       return response.status(405).json({ error: 'Method not allowed.' });
     }
 
-    assertAdmin(request.body?.password);
+    const body = parseBody(request.body);
+    assertAdmin(body.password);
 
-    const { filename, contentType, dataUrl } = request.body || {};
+    const { filename, contentType, dataUrl } = body;
     if (!filename || !contentType || !dataUrl) {
       return response.status(400).json({ error: 'Missing upload fields.' });
     }
@@ -39,7 +40,7 @@ export default async function handler(request, response) {
     return response.status(200).json({ url: blob.url });
   } catch (error) {
     const status = error.status || 500;
-    const message = status === 500 ? 'Upload failed.' : error.message;
+    const message = error.message || 'Upload failed.';
     return response.status(status).json({ error: message });
   }
 }
@@ -71,4 +72,10 @@ function createHttpError(status, message) {
   const error = new Error(message);
   error.status = status;
   return error;
+}
+
+function parseBody(body) {
+  if (!body) return {};
+  if (typeof body === 'string') return JSON.parse(body || '{}');
+  return body;
 }
