@@ -119,7 +119,7 @@ function WidgetsPopup({ onClose }) {
                 <iframe
                   ref={iframeRef}
                   title={`${selectedWidget?.name || 'Widget'} preview`}
-                  srcDoc={renderedHtml}
+                  srcDoc={buildPreviewDocument(renderedHtml)}
                   sandbox="allow-same-origin"
                   scrolling="no"
                   onLoad={resizePreview}
@@ -187,6 +187,37 @@ function renderTemplate(html, values, fields) {
     const value = values[field.key] ?? field.defaultValue ?? '';
     return result.replaceAll(`{{${field.key}}}`, value);
   }, html);
+}
+
+function buildPreviewDocument(html) {
+  return `<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      html,
+      body {
+        margin: 0;
+        min-height: 100%;
+        background: transparent;
+      }
+
+      body {
+        display: grid;
+        place-items: start center;
+        padding: 0;
+        color: #fff;
+        overflow: hidden;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+    </style>
+  </head>
+  <body>${html}</body>
+</html>`;
 }
 
 export default WidgetsPopup;

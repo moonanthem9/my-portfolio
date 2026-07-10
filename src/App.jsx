@@ -4,12 +4,20 @@ import ChatbotPopup from './ChatbotPopup';
 import NotesPopup from './NotesPopup';
 import ProfilePopup from './ProfilePopup';
 import WidgetsPopup from './WidgetsPopup';
+import {
+  CONTENT_UPDATED_EVENT,
+  DEFAULT_BACKGROUND_IMAGE,
+  getMergedContent,
+  loadMergedContent,
+} from './data/contentStore';
 import './App.css';
 
 function App() {
   const isAdminRoute = window.location.pathname === '/admin';
+  const initialContent = getMergedContent();
   const [windowSize, setWindowSize] = useState({ w: window.innerWidth, h: window.innerHeight });
   const [time, setTime] = useState(new Date());
+  const [backgroundImage, setBackgroundImage] = useState(initialContent.settings.backgroundImage);
   
   // 팝업 상태 (새 방에서 이 변수를 활용해 팝업을 띄우게 됩니다)
   const [activePopup, setActivePopup] = useState(null);
@@ -22,7 +30,7 @@ function App() {
   const MAG = 2.5; 
   const GAP = 30; 
   const ANIM_SPEED = '0.15s';
-  const MAIN_IMAGE_URL = "/background.jpg";
+  const MAIN_IMAGE_URL = backgroundImage || DEFAULT_BACKGROUND_IMAGE;
   const imageScale = Math.max(windowSize.w / imageSize.w, windowSize.h / imageSize.h);
   const coverSize = {
     w: imageSize.w * imageScale,
@@ -60,7 +68,7 @@ function App() {
     };
 
     const img = new Image();
-    img.src = MAIN_IMAGE_URL;
+    img.src = DEFAULT_BACKGROUND_IMAGE;
     img.onload = () => {
       setImageSize({ w: img.naturalWidth || 16, h: img.naturalHeight || 9 });
       completeBoot();
@@ -75,6 +83,33 @@ function App() {
       clearTimeout(fallbackTimer);
     };
   }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+    const syncBackground = async () => {
+      const nextContent = await loadMergedContent();
+      if (isMounted) setBackgroundImage(nextContent.settings.backgroundImage);
+    };
+    const handleContentUpdate = () => {
+      syncBackground();
+    };
+
+    syncBackground();
+    window.addEventListener(CONTENT_UPDATED_EVENT, handleContentUpdate);
+
+    return () => {
+      isMounted = false;
+      window.removeEventListener(CONTENT_UPDATED_EVENT, handleContentUpdate);
+    };
+  }, []);
+
+  useEffect(() => {
+    const img = new Image();
+    img.src = MAIN_IMAGE_URL;
+    img.onload = () => {
+      setImageSize({ w: img.naturalWidth || 16, h: img.naturalHeight || 9 });
+    };
+  }, [MAIN_IMAGE_URL]);
 
   const [targets, setTargets] = useState([
     { id: 1, px: 0.15, py: 0.20, br: 0.12, tr: 0.18, label: 'PROFILE', defaultDir: 'right' },

@@ -43,9 +43,9 @@ function ProfilePopup({ mainImageUrl, onClose }) {
 
         @media (hover: none), (max-width: 760px) {
           .id-card:hover {
-            z-index: 50 !important;
-            transform: rotate(-2deg) !important;
-            box-shadow: 0 15px 35px rgba(0,0,0,0.85) !important;
+            z-index: 120 !important;
+            transform: scale(1.08) rotate(-1deg) !important;
+            box-shadow: 0 18px 42px rgba(0,0,0,0.9) !important;
           }
         }
       `}</style>

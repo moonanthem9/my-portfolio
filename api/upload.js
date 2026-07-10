@@ -17,7 +17,7 @@ export default async function handler(request, response) {
     const body = parseBody(request.body);
     assertAdmin(body.password);
 
-    const { filename, contentType, dataUrl } = body;
+    const { filename, contentType, dataUrl, folder } = body;
     if (!filename || !contentType || !dataUrl) {
       return response.status(400).json({ error: 'Missing upload fields.' });
     }
@@ -31,7 +31,7 @@ export default async function handler(request, response) {
       return response.status(413).json({ error: 'Image must be 3MB or smaller.' });
     }
 
-    const blob = await put(makeBlobPath(filename), imageBuffer, {
+    const blob = await put(makeBlobPath(filename, folder), imageBuffer, {
       access: 'public',
       contentType,
       addRandomSuffix: true,
@@ -58,14 +58,19 @@ function dataUrlToBuffer(dataUrl) {
   return Buffer.from(base64Data, 'base64');
 }
 
-function makeBlobPath(filename) {
+function makeBlobPath(filename, folder = 'archive-images') {
+  const safeFolder = String(folder)
+    .toLowerCase()
+    .replace(/[^a-z0-9/_-]+/g, '-')
+    .replace(/^\/+|\/+$/g, '')
+    .slice(0, 80) || 'archive-images';
   const safeName = filename
     .toLowerCase()
     .replace(/[^a-z0-9._-]+/g, '-')
     .replace(/^-+|-+$/g, '')
     .slice(0, 80);
 
-  return `archive-images/${Date.now()}-${safeName || 'image'}`;
+  return `${safeFolder}/${Date.now()}-${safeName || 'image'}`;
 }
 
 function createHttpError(status, message) {

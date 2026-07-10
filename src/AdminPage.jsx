@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import {
   clearAdminPassword,
+  DEFAULT_BACKGROUND_IMAGE,
   deleteContentItem,
   getAdminPassword,
   getStoredContent,
@@ -9,6 +10,7 @@ import {
   saveContentItem,
   setAdminPassword,
   updateContentItem,
+  updateSiteSettings,
   uploadImage,
 } from './data/contentStore';
 
@@ -36,8 +38,13 @@ const initialForms = {
     html: '',
     fields: [],
   },
+  settings: {
+    backgroundImage: '',
+  },
 };
 const MAX_UPLOAD_BYTES = 3 * 1024 * 1024;
+const BACKGROUND_CONVERT_BYTES = 1 * 1024 * 1024;
+const BACKGROUND_JPEG_QUALITY = 0.78;
 
 function AdminPage() {
   const [section, setSection] = useState('notes');
@@ -55,7 +62,15 @@ function AdminPage() {
     let isMounted = true;
 
     loadStoredContent().then((content) => {
-      if (isMounted) setSavedContent(content);
+      if (isMounted) {
+        setSavedContent(content);
+        setForms((prev) => ({
+          ...prev,
+          settings: {
+            backgroundImage: content.settings.backgroundImage,
+          },
+        }));
+      }
     });
 
     return () => {
@@ -133,6 +148,43 @@ function AdminPage() {
     }
   };
 
+  const handleBackgroundUpload = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!password) {
+      setStatus('PASSWORD_REQUIRED');
+      return;
+    }
+
+    setIsBusy(true);
+    setStatus('OPTIMIZING_BACKGROUND');
+
+    try {
+      const uploadFile = await prepareBackgroundFile(file);
+      if (uploadFile.size > MAX_UPLOAD_BYTES) {
+        setStatus('BACKGROUND_TOO_LARGE_MAX_3MB');
+        return;
+      }
+
+      setStatus(uploadFile === file ? 'UPLOADING_BACKGROUND' : 'UPLOADING_OPTIMIZED_BACKGROUND');
+      const imageUrl = await uploadImage(uploadFile, password, 'site-backgrounds');
+      setForms((prev) => ({
+        ...prev,
+        settings: {
+          ...prev.settings,
+          backgroundImage: imageUrl,
+        },
+      }));
+      setStatus(uploadFile === file ? 'BACKGROUND_UPLOADED' : 'BACKGROUND_OPTIMIZED_AND_UPLOADED');
+    } catch (error) {
+      setStatus(`BACKGROUND_UPLOAD_FAILED: ${error.message}`);
+    } finally {
+      setIsBusy(false);
+      event.target.value = '';
+    }
+  };
+
   const handleUnlock = (event) => {
     event.preventDefault();
 
@@ -155,6 +207,24 @@ function AdminPage() {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+
+    if (section === 'settings') {
+      setIsBusy(true);
+      setStatus('SAVING_SETTINGS');
+
+      try {
+        const nextContent = await updateSiteSettings({
+          backgroundImage: activeForm.backgroundImage || DEFAULT_BACKGROUND_IMAGE,
+        }, password);
+        setSavedContent(nextContent);
+        setStatus('SETTINGS_SAVED_TO_GITHUB');
+      } catch (error) {
+        setStatus(error.message === 'Unauthorized.' ? 'UNAUTHORIZED' : `SETTINGS_SAVE_FAILED: ${error.message}`);
+      } finally {
+        setIsBusy(false);
+      }
+      return;
+    }
 
     const item = buildContentItem(section, activeForm, editingEntry);
     if (!item) {
@@ -249,6 +319,7 @@ function AdminPage() {
                 ['notes', 'NOTES'],
                 ['chatbots', 'CHATBOT'],
                 ['widgets', 'WIDGET'],
+                ['settings', 'SETTINGS'],
               ].map(([id, label]) => (
                 <button
                   key={id}
@@ -309,9 +380,17 @@ function AdminPage() {
                 </>
               )}
 
+              {section === 'settings' && (
+                <SettingsEditor
+                  backgroundImage={activeForm.backgroundImage || DEFAULT_BACKGROUND_IMAGE}
+                  onUpload={handleBackgroundUpload}
+                  onReset={() => updateField('backgroundImage', DEFAULT_BACKGROUND_IMAGE)}
+                />
+              )}
+
               <div style={actionRowStyle}>
                 <button type="submit" disabled={isBusy} style={saveButtonStyle}>
-                  {editingEntry ? 'UPDATE ENTRY' : 'SAVE ENTRY'}
+                  {section === 'settings' ? 'SAVE SETTINGS' : editingEntry ? 'UPDATE ENTRY' : 'SAVE ENTRY'}
                 </button>
                 {editingEntry && (
                   <button type="button" onClick={handleCancelEdit} disabled={isBusy} style={cancelButtonStyle}>CANCEL EDIT</button>
@@ -542,6 +621,23 @@ function ImageField({ image, onUpload, onClear }) {
   );
 }
 
+function SettingsEditor({ backgroundImage, onUpload, onReset }) {
+  return (
+    <section style={settingsPanelStyle}>
+      <div>
+        <div style={labelTextStyle}>MAIN BACKGROUND</div>
+        <p style={variableHintStyle}>WEBP는 그대로 저장하고, 큰 PNG/JPEG는 업로드 전에 가벼운 JPG로 압축합니다.</p>
+      </div>
+      <input type="file" accept="image/png,image/jpeg,image/webp" onChange={onUpload} style={fileInputStyle} />
+      <div style={imagePreviewWrapStyle}>
+        <img src={backgroundImage} alt="" style={backgroundPreviewStyle} />
+        <div style={imageUrlStyle}>{backgroundImage}</div>
+        <button type="button" onClick={onReset} style={clearButtonStyle}>RESET TO DEFAULT</button>
+      </div>
+    </section>
+  );
+}
+
 function ContentCount({ label, count }) {
   return (
     <div style={countRowStyle}>
@@ -549,6 +645,54 @@ function ContentCount({ label, count }) {
       <strong>{count}</strong>
     </div>
   );
+}
+
+async function prepareBackgroundFile(file) {
+  if (file.type === 'image/webp') return file;
+
+  const shouldConvert = file.type === 'image/png' || file.size > BACKGROUND_CONVERT_BYTES;
+  if (!shouldConvert) return file;
+
+  const image = await loadImageBitmap(file);
+  const canvas = document.createElement('canvas');
+  canvas.width = image.naturalWidth || image.width;
+  canvas.height = image.naturalHeight || image.height;
+
+  const context = canvas.getContext('2d');
+  if (!context) throw new Error('Could not prepare background image.');
+
+  context.drawImage(image, 0, 0, canvas.width, canvas.height);
+  const blob = await canvasToBlob(canvas, 'image/jpeg', BACKGROUND_JPEG_QUALITY);
+  return new File([blob], replaceImageExtension(file.name, 'jpg'), { type: 'image/jpeg' });
+}
+
+function loadImageBitmap(file) {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    const url = URL.createObjectURL(file);
+    image.onload = () => {
+      URL.revokeObjectURL(url);
+      resolve(image);
+    };
+    image.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error('Could not read background image.'));
+    };
+    image.src = url;
+  });
+}
+
+function canvasToBlob(canvas, type, quality) {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob((blob) => {
+      if (blob) resolve(blob);
+      else reject(new Error('Could not optimize background image.'));
+    }, type, quality);
+  });
+}
+
+function replaceImageExtension(filename, extension) {
+  return filename.replace(/\.[a-z0-9]+$/i, '') + `.${extension}`;
 }
 
 const pageStyle = {
@@ -786,6 +930,21 @@ const variablePanelStyle = {
   border: '1px solid rgba(0,85,255,0.45)',
   padding: '14px',
   background: 'rgba(0,0,0,0.25)',
+};
+
+const settingsPanelStyle = {
+  display: 'grid',
+  gap: '14px',
+  border: '1px solid rgba(0,85,255,0.45)',
+  padding: '14px',
+  background: 'rgba(0,0,0,0.25)',
+};
+
+const backgroundPreviewStyle = {
+  width: '100%',
+  aspectRatio: '16 / 10',
+  objectFit: 'cover',
+  border: '1px solid rgba(255,255,255,0.45)',
 };
 
 const variableHeaderStyle = {

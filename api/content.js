@@ -8,6 +8,9 @@ const EMPTY_CONTENT = {
   chatbots: [],
   notes: [],
   widgets: [],
+  settings: {
+    backgroundImage: '/background.jpg',
+  },
 };
 
 export default async function handler(request, response) {
@@ -60,6 +63,19 @@ export default async function handler(request, response) {
       assertAdmin(body.password);
 
       const { section, item } = body;
+      if (section === 'settings') {
+        const { content, sha } = await readContentFile();
+        const previousBackground = content.settings.backgroundImage;
+        const nextContent = normalizeContent({
+          ...content,
+          settings: normalizeSettings(body.settings),
+        });
+
+        await writeContentFile(nextContent, sha, 'Update site settings');
+        await cleanupUnusedImages([previousBackground], nextContent);
+        return response.status(200).json(nextContent);
+      }
+
       assertValidSection(section);
       if (!item?.id) throw createHttpError(400, 'Missing item id.');
 
@@ -179,6 +195,15 @@ function normalizeContent(content) {
     chatbots: Array.isArray(content.chatbots) ? content.chatbots : [],
     notes: Array.isArray(content.notes) ? content.notes : [],
     widgets: Array.isArray(content.widgets) ? content.widgets : [],
+    settings: normalizeSettings(content.settings),
+  };
+}
+
+function normalizeSettings(settings = {}) {
+  return {
+    backgroundImage: typeof settings.backgroundImage === 'string' && settings.backgroundImage
+      ? settings.backgroundImage
+      : '/background.jpg',
   };
 }
 
@@ -197,11 +222,14 @@ async function cleanupUnusedImages(imageUrls, content) {
 }
 
 function getAllImages(content) {
-  return VALID_SECTIONS.flatMap((section) => (
-    content[section]
-      .map((item) => item.image)
-      .filter(Boolean)
-  ));
+  return [
+    content.settings.backgroundImage,
+    ...VALID_SECTIONS.flatMap((section) => (
+      content[section]
+        .map((item) => item.image)
+        .filter(Boolean)
+    )),
+  ].filter(Boolean);
 }
 
 function isVercelBlobUrl(url) {

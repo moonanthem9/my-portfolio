@@ -4,6 +4,7 @@ import repositoryContent from './userContent.json';
 export const CONTENT_STORAGE_KEY = 'asterism.archive.content.v1';
 export const ADMIN_SESSION_KEY = 'asterism.archive.admin.session';
 export const CONTENT_UPDATED_EVENT = 'asterism-content-updated';
+export const DEFAULT_BACKGROUND_IMAGE = '/background.jpg';
 
 const repositoryStoredContent = normalizeContent(repositoryContent);
 
@@ -25,6 +26,7 @@ export function mergeWithDefaultContent(storedContent) {
     chatbots: [...storedContent.chatbots, ...defaultChatbots],
     notes: [...storedContent.notes, ...defaultNotes],
     widgets: [...storedContent.widgets, ...defaultWidgets],
+    settings: storedContent.settings,
   };
 }
 
@@ -95,7 +97,23 @@ export async function deleteContentItem(section, id, password) {
   return nextContent;
 }
 
-export async function uploadImage(file, password) {
+export async function updateSiteSettings(settings, password) {
+  const response = await fetch('/api/content', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ section: 'settings', settings, password }),
+  });
+
+  if (!response.ok) throw new Error(await getApiError(response));
+
+  const nextContent = normalizeContent(await response.json());
+  cacheLocalContent(nextContent);
+  window.dispatchEvent(new CustomEvent(CONTENT_UPDATED_EVENT));
+
+  return nextContent;
+}
+
+export async function uploadImage(file, password, folder = 'archive-images') {
   const dataUrl = await fileToDataUrl(file);
   const response = await fetch('/api/upload', {
     method: 'POST',
@@ -105,6 +123,7 @@ export async function uploadImage(file, password) {
       filename: file.name,
       contentType: file.type,
       dataUrl,
+      folder,
     }),
   });
 
@@ -148,6 +167,15 @@ function normalizeContent(content) {
     chatbots: Array.isArray(content.chatbots) ? content.chatbots : [],
     notes: Array.isArray(content.notes) ? content.notes : [],
     widgets: Array.isArray(content.widgets) ? content.widgets : [],
+    settings: normalizeSettings(content.settings),
+  };
+}
+
+function normalizeSettings(settings = {}) {
+  return {
+    backgroundImage: typeof settings.backgroundImage === 'string' && settings.backgroundImage
+      ? settings.backgroundImage
+      : DEFAULT_BACKGROUND_IMAGE,
   };
 }
 
@@ -156,6 +184,16 @@ function mergeStoredContent(primaryContent, fallbackContent) {
     chatbots: mergeContentList(primaryContent.chatbots, fallbackContent.chatbots),
     notes: mergeContentList(primaryContent.notes, fallbackContent.notes),
     widgets: mergeContentList(primaryContent.widgets, fallbackContent.widgets),
+    settings: mergeSettings(primaryContent.settings, fallbackContent.settings),
+  };
+}
+
+function mergeSettings(primarySettings, fallbackSettings) {
+  const primaryBackground = primarySettings.backgroundImage;
+  return {
+    backgroundImage: primaryBackground && primaryBackground !== DEFAULT_BACKGROUND_IMAGE
+      ? primaryBackground
+      : fallbackSettings.backgroundImage,
   };
 }
 
