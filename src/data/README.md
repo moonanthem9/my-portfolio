@@ -1,6 +1,6 @@
 # Content Data
 
-This folder is the temporary content layer for the portfolio.
+This folder is the content layer for asterism-sys.
 
 Edit `content.js` to add or change:
 

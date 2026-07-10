@@ -289,7 +289,7 @@ function AdminPage() {
       <section style={panelStyle}>
         <header style={headerStyle}>
           <div>
-            <div style={eyebrowStyle}>ASTERISM ADMIN</div>
+            <div style={eyebrowStyle}>ASTERISM-SYS ADMIN</div>
             <h1 style={titleStyle}>WRITE ARCHIVE ENTRY</h1>
           </div>
           <div style={headerActionStyle}>

@@ -161,7 +161,7 @@ function App() {
       <div style={{ position: 'fixed', inset: 0, backgroundColor: '#050505', color: '#0055ff', fontFamily: 'monospace', display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '20px' }}>
         <div style={{ width: '100%', maxWidth: '800px', display: 'flex', flexDirection: 'column', fontSize: windowSize.w < 768 ? '12px' : '16px' }}>
           <div style={{ marginBottom: '40px' }}>
-            <div style={{ color: '#fff', fontSize: '2em', fontWeight: 'bold', letterSpacing: '4px', marginBottom: '10px' }}>asterism.sys</div>
+            <div style={{ color: '#fff', fontSize: '2em', fontWeight: 'bold', letterSpacing: '4px', marginBottom: '10px' }}>asterism-sys</div>
             <div>BOOT SEQUENCE INITIATED...</div>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', opacity: 0.8 }}>
@@ -205,7 +205,7 @@ function App() {
             <div style={{ width: 14, height: 14, borderRadius: '50%', backgroundColor: '#ef4444', opacity: blink ? 1 : 0.2, transition: 'opacity 0.2s', boxShadow: '0 0 12px #ef4444' }} />
             <span style={{ fontSize: '18px', fontWeight: 'bold', letterSpacing: '3px', color: '#ef4444', textShadow: '0 2px 4px rgba(0,0,0,0.8)' }}>REC</span>
           </div>
-          <div style={{ color: '#0055ff', fontSize: '12px', letterSpacing: '2px', textShadow: '0 2px 4px rgba(0,0,0,0.9)' }}>CAM_01 // ASTERISM_SYS</div>
+          <div style={{ color: '#0055ff', fontSize: '12px', letterSpacing: '2px', textShadow: '0 2px 4px rgba(0,0,0,0.9)' }}>CAM_01 // ASTERISM-SYS</div>
         </div>
         
         <div style={{ position: 'absolute', top: 40, right: 40, zIndex: 5, pointerEvents: 'none', textAlign: 'right', color: '#0055ff', textShadow: '0 2px 4px rgba(0,0,0,0.9)' }}>
@@ -215,7 +215,7 @@ function App() {
         </div>
 
         <div style={{ position: 'absolute', bottom: 40, left: 40, zIndex: 5, pointerEvents: 'none', textAlign: 'left', textShadow: '0 2px 6px rgba(0,0,0,0.9)' }}>
-          <div style={{ color: '#fff', fontSize: '24px', fontWeight: 'bold', letterSpacing: '3px', marginBottom: '8px' }}>asterism</div>
+          <div style={{ color: '#fff', fontSize: '24px', fontWeight: 'bold', letterSpacing: '3px', marginBottom: '8px' }}>asterism-sys</div>
           <div style={{ color: '#0055ff', fontSize: '13px', letterSpacing: '1px', marginBottom: '4px' }}>PERSONAL_ARCHIVE_ONLINE</div>
           <div style={{ color: '#0055ff', fontSize: '10px', opacity: 0.7 }}>AUTHORIZATION: GRANTED</div>
         </div>
