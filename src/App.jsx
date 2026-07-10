@@ -22,7 +22,7 @@ function App() {
   const MAG = 2.5; 
   const GAP = 30; 
   const ANIM_SPEED = '0.15s';
-  const MAIN_IMAGE_URL = "/background.png";
+  const MAIN_IMAGE_URL = "/background.jpg";
   const imageScale = Math.max(windowSize.w / imageSize.w, windowSize.h / imageSize.h);
   const coverSize = {
     w: imageSize.w * imageScale,

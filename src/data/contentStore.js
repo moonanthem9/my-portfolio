@@ -1,28 +1,22 @@
 import { chatbots as defaultChatbots, notes as defaultNotes, widgets as defaultWidgets } from './content';
+import repositoryContent from './userContent.json';
 
 export const CONTENT_STORAGE_KEY = 'asterism.archive.content.v1';
 export const ADMIN_SESSION_KEY = 'asterism.archive.admin.session';
 export const CONTENT_UPDATED_EVENT = 'asterism-content-updated';
 
-const emptyStoredContent = {
-  chatbots: [],
-  notes: [],
-  widgets: [],
-};
+const repositoryStoredContent = normalizeContent(repositoryContent);
 
 export function getStoredContent() {
-  if (typeof window === 'undefined') return emptyStoredContent;
+  if (typeof window === 'undefined') return repositoryStoredContent;
 
   try {
     const rawContent = window.localStorage.getItem(CONTENT_STORAGE_KEY);
-    if (!rawContent) return emptyStoredContent;
+    if (!rawContent) return repositoryStoredContent;
 
-    return {
-      ...emptyStoredContent,
-      ...JSON.parse(rawContent),
-    };
+    return mergeStoredContent(normalizeContent(JSON.parse(rawContent)), repositoryStoredContent);
   } catch {
-    return emptyStoredContent;
+    return repositoryStoredContent;
   }
 }
 
@@ -155,6 +149,22 @@ function normalizeContent(content) {
     notes: Array.isArray(content.notes) ? content.notes : [],
     widgets: Array.isArray(content.widgets) ? content.widgets : [],
   };
+}
+
+function mergeStoredContent(primaryContent, fallbackContent) {
+  return {
+    chatbots: mergeContentList(primaryContent.chatbots, fallbackContent.chatbots),
+    notes: mergeContentList(primaryContent.notes, fallbackContent.notes),
+    widgets: mergeContentList(primaryContent.widgets, fallbackContent.widgets),
+  };
+}
+
+function mergeContentList(primaryList, fallbackList) {
+  const seenIds = new Set(primaryList.map((item) => item.id));
+  return [
+    ...primaryList,
+    ...fallbackList.filter((item) => !seenIds.has(item.id)),
+  ];
 }
 
 async function getApiError(response) {
