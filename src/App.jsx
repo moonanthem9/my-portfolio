@@ -4,6 +4,7 @@ import ChatbotPopup from './ChatbotPopup';
 import NotesPopup from './NotesPopup';
 import ProfilePopup from './ProfilePopup';
 import WidgetsPopup from './WidgetsPopup';
+import './App.css';
 
 function App() {
   const isAdminRoute = window.location.pathname === '/admin';
@@ -270,6 +271,12 @@ function App() {
 
         <div style={{ position: 'absolute', inset: 0, background: 'repeating-linear-gradient(transparent, transparent 2px, rgba(0,0,0,0.15) 3px, rgba(0,0,0,0.15) 3px)', pointerEvents: 'none', zIndex: 40 }} />
         <div style={{ position: 'absolute', inset: 0, boxShadow: 'inset 0 0 150px rgba(0,0,0,0.95)', pointerEvents: 'none', zIndex: 40 }} />
+        <div className="cctv-interference" aria-hidden="true">
+          <span className="cctv-noise" />
+          <span className="cctv-scan-jump cctv-scan-jump-a" />
+          <span className="cctv-scan-jump cctv-scan-jump-b" />
+          <span className="cctv-flicker" />
+        </div>
       </div>
 
       {activePopup === 'PROFILE' && (
