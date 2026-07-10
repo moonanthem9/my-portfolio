@@ -40,6 +40,14 @@ function ProfilePopup({ mainImageUrl, onClose }) {
           font-family: 'Caveat', cursive, sans-serif;
           color: #222;
         }
+
+        @media (hover: none), (max-width: 760px) {
+          .id-card:hover {
+            z-index: 50 !important;
+            transform: rotate(-2deg) !important;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.85) !important;
+          }
+        }
       `}</style>
 
       <div
@@ -140,7 +148,7 @@ function ProfilePopup({ mainImageUrl, onClose }) {
               </div>
             </div>
 
-            <div className="collage-item" style={{
+            <div className="collage-item id-card" style={{
               position: 'absolute', top: '35%', left: '8%',
               width: '84%', aspectRatio: '1.7 / 1',
               backgroundColor: '#fff', borderRadius: '8px',
@@ -148,7 +156,8 @@ function ProfilePopup({ mainImageUrl, onClose }) {
               boxShadow: '0 15px 35px rgba(0,0,0,0.85)',
               display: 'flex', padding: '3.5%',
               color: '#111', fontFamily: 'monospace',
-              boxSizing: 'border-box'
+              boxSizing: 'border-box',
+              overflow: 'hidden'
             }}>
               <div style={{
                 height: '100%', aspectRatio: '3 / 4',
@@ -157,7 +166,7 @@ function ProfilePopup({ mainImageUrl, onClose }) {
                 filter: 'grayscale(100%) contrast(1.2)', border: '1px solid #ddd', flexShrink: 0
               }} />
 
-              <div style={{ flex: 1, paddingLeft: '5%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+              <div style={{ flex: 1, minWidth: 0, paddingLeft: '5%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                 <div style={{ borderBottom: '2px solid #0055ff', paddingBottom: '3%' }}>
                   <div style={{ fontSize: '5.5cqi', fontWeight: '900', letterSpacing: '-0.5px' }}>asterism</div>
                   <div style={{ fontSize: '2.5cqi', color: '#0055ff', fontWeight: 'bold', marginTop: '2%' }}>AI CHATBOT CREATOR</div>
@@ -169,7 +178,7 @@ function ProfilePopup({ mainImageUrl, onClose }) {
 
                 <div style={{ display: 'flex', marginTop: 'auto', alignItems: 'center', gap: '4%', backgroundColor: '#0055ff', padding: '3% 4%', borderRadius: '4px' }}>
                   <div style={{ fontSize: '2.5cqi', color: '#ffffff', display: 'flex', alignItems: 'center' }}>✉</div>
-                  <div style={{ fontSize: '2.05cqi', fontWeight: 'bold', color: '#f9f9f9', letterSpacing: '0.5px' }}>asterism260521@gmail.com</div>
+                  <div style={{ fontSize: '2.05cqi', fontWeight: 'bold', color: '#f9f9f9', letterSpacing: '0.5px', minWidth: 0, overflowWrap: 'anywhere' }}>asterism260521@gmail.com</div>
                 </div>
               </div>
             </div>
